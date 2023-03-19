@@ -74,14 +74,14 @@ class Trader:
                         if ask_price >= acceptable_price:
                             break
                         ask_volume = order_depth.sell_orders[ask_price]
-                        print("BUY", str(-ask_volume) + "x", ask_price)
+                        print("BUY PEARLS", str(-ask_volume) + "x", ask_price)
                         orders.append(Order(product, ask_price, -ask_volume))
                 if len(order_depth.buy_orders) != 0:
                     for ask_price in sorted(order_depth.buy_orders.keys(), reverse=True):
                         if ask_price <= acceptable_price:
                             break
                         ask_volume = order_depth.buy_orders[ask_price]
-                        print("SELL", str(ask_volume) + "x", ask_price)
+                        print("SELL PEARLS", str(ask_volume) + "x", ask_price)
                         orders.append(Order(product, ask_price, -ask_volume))
                 result[product] = orders
 
@@ -105,33 +105,42 @@ class Trader:
 
                 if len(order_depth.sell_orders) > 0:
                     #if should_buy:
+                    num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
+
+                    print("bot ask depths: " + str(order_depth.sell_orders))
                     for ask_price in sorted(order_depth.sell_orders.keys()):
-                        if ask_price > mean_bid_price:
+                        if ask_price > mean_bid_price or len(self.banana_ask_stats.sliding_window) < 3:
                             break
 
-                        ask_volume = max(order_depth.sell_orders[ask_price], 0 if 'BANANAS' not in state.position.keys() else 20-state.position['BANANAS'])
+                        ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_positions)))
     
                         order_depth.sell_orders[ask_price]
                         if len(orders) >= self.max_concurrent_positions:
                             break
                         print("BUY BANANAS", str(-ask_volume) + "x", ask_price)
                         orders.append(Order(product, ask_price, -ask_volume))
+                        num_positions -= ask_volume
                         #self.banana_positions = self.banana_positions.extend([ask_price for x in range(ask_volume)])
 
                 if len(order_depth.buy_orders) > 0:
                     #if should_sell:
+                    num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
+
+                    print("bot bid depths: " + str(order_depth.buy_orders))
                     for bid_price in sorted(order_depth.buy_orders.keys(), reverse=True):
                         if bid_price < mean_bid_price:
                             break
-                        bid_volume = min(order_depth.buy_orders[bid_price], 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS'])
+                        bid_volume = min(order_depth.buy_orders[bid_price], num_positions)
+                        #print("bot bid volume: " + str(order_depth.buy_orders[bid_price]))
+                        
                         order_depth.buy_orders[bid_price]
                         if len(orders) >= self.max_concurrent_positions:
                             break
                         print("SELL BANANAS", str(bid_volume) + "x", bid_price)
-                        orders.append(Order(product, bid_price, bid_volume))
+                        orders.append(Order(product, bid_price, -bid_volume))
+                        num_positions -= bid_volume
                         #self.banana_positions = self.banana_positions[bid_volume:]
 
-                print(state.position)
 
                 # Add all the above orders to the result dict
                 result[product] = orders
@@ -142,7 +151,7 @@ class Trader:
                 # Depending on the logic above
 
         
-        print(self.banana_positions)
+        print(state.position)
 
         # Print stats
         if PRINT_BANANA_ASK_STATS:
