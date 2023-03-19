@@ -48,9 +48,13 @@ class StockmarketLog:
         for t in range(t_end):
             self.add_edges(graph, table, t)
 
-        print(
-            nx.shortest_path(graph, source="0_0",target=f"{t_end}_0", weight="weight")
-        )
+        path = nx.shortest_path(graph, source="0_0",target=f"{t_end}_0", weight="weight")
+        cost = nx.get_edge_attributes(graph,'cost')
+        
+        total = 0
+        for prev, curr in zip(path[:-1], path[1:]):
+            total += cost[(prev, curr)]
+        print(total)
 
 
         # pos=nx.get_node_attributes(graph,'pos')
@@ -102,18 +106,20 @@ class StockmarketLog:
 
         min_weight = asks_cum[-1]
 
-        graph.add_edge(f"{t}_{i}", f"{t + 1}_{i}", weight=min_weight)
+        graph.add_edge(f"{t}_{i}", f"{t + 1}_{i}", weight=min_weight, cost=0.0)
 
         for delta, j in enumerate(range(i + 1, self.max_pos + 1)[:len(asks_cum)]):
             graph.add_edge(
                 f"{t}_{i}", f"{t + 1}_{j}", 
-                weight=-asks_cum[delta] + min_weight
+                weight=-asks_cum[delta] + min_weight,
+                cost=-asks_cum[delta]
             )
 
         for delta, j in enumerate(range(i - 1, -self.max_pos - 1, -1)[:len(bids_cum)]):
             graph.add_edge(
                 f"{t}_{i}", f"{t + 1}_{j}", 
-                weight=bids_cum[delta] + min_weight
+                weight=bids_cum[delta] + min_weight,
+                cost=bids_cum[delta]
             )
 
 
