@@ -109,9 +109,8 @@ class Trader:
 
                     print("bot ask depths: " + str(order_depth.sell_orders))
                     for ask_price in sorted(order_depth.sell_orders.keys()):
-                        if ask_price > mean_bid_price or len(self.banana_ask_stats.sliding_window) < 3:
+                        if ask_price > self.banana_bid_stats.get_eightith() or len(self.banana_ask_stats.sliding_window) < 3:
                             break
-
                         ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_positions)))
     
                         order_depth.sell_orders[ask_price]
@@ -207,6 +206,9 @@ class SlidingWindowStatistics:
 
     def get_mean(self):
         return self.mean
+
+    def get_eightith(self):
+        return self.flat_list[max(0,len(flat_list) - 1 - int(len(flat_list)/5))]
 
     def print_stats(self):
         self.update_stats()
