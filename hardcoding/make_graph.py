@@ -48,7 +48,10 @@ class StockmarketLog:
         for t in range(t_end):
             self.add_edges(graph, table, t)
 
-        nx.shortest_path(graph, source="0_0",target=f"{t_end}_0", weight="weight")
+        print(
+            nx.shortest_path(graph, source="0_0",target=f"{t_end}_0", weight="weight")
+        )
+
 
         # pos=nx.get_node_attributes(graph,'pos')
         # labels = nx.get_edge_attributes(graph,'weight')
@@ -97,20 +100,20 @@ class StockmarketLog:
 
     def add_edges_from_node(self, graph : nx.DiGraph, i : int, t : int, bids_cum : list, asks_cum : list):
 
-        min_weight = bids_cum[-1]
+        min_weight = asks_cum[-1]
 
         graph.add_edge(f"{t}_{i}", f"{t + 1}_{i}", weight=min_weight)
 
         for delta, j in enumerate(range(i + 1, self.max_pos + 1)[:len(asks_cum)]):
             graph.add_edge(
                 f"{t}_{i}", f"{t + 1}_{j}", 
-                weight=asks_cum[delta] + min_weight
+                weight=-asks_cum[delta] + min_weight
             )
 
         for delta, j in enumerate(range(i - 1, -self.max_pos - 1, -1)[:len(bids_cum)]):
             graph.add_edge(
                 f"{t}_{i}", f"{t + 1}_{j}", 
-                weight=-bids_cum[delta] + min_weight
+                weight=bids_cum[delta] + min_weight
             )
 
 
