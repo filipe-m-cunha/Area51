@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
 
+VOLUME_BINNING = 25
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, required=True)
 
@@ -34,8 +36,12 @@ for product in products:
     
     # volume
     volumes = product_data.iloc[:, 4:-2:2]
-    bid_volume = volumes.iloc[:, :len(volumes.columns) // 2].mean(axis=1)
-    ask_volume = volumes.iloc[:, len(volumes.columns) // 2:].mean(axis=1)
+    bid_volume = volumes.iloc[:, :len(volumes.columns) // 2].sum(axis=1).to_numpy()
+    bid_volume = bid_volume.reshape(-1, VOLUME_BINNING)
+    bid_volume = bid_volume.sum(axis=1)
+    ask_volume = volumes.iloc[:, len(volumes.columns) // 2:].sum(axis=1).to_numpy()
+    ask_volume = ask_volume.reshape(-1, VOLUME_BINNING)
+    ask_volume = ask_volume.sum(axis=1)
     ax[3, i].plot(bid_volume, label='Bids', lw=0.3)
     ax[3, i].plot(ask_volume, label='Asks', lw=0.3)
     ax[3, i].legend()
