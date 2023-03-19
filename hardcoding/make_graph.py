@@ -33,13 +33,13 @@ class StockmarketLog:
         assert nbiders == naskers
         self.nbots = nbiders
 
-        # Make graphs
-        self.graphs = {
-          k: self.make_graph(table)
+        # Make 
+        self.optimal_positions = {
+          k: self.make_graph(table, k)
           for k, table in df.groupby("product")
         }      
 
-    def make_graph(self, table : pd.DataFrame):
+    def make_graph(self, table : pd.DataFrame, key : str):
         graph = nx.DiGraph()
 
         t_end = table.shape[0]
@@ -48,20 +48,33 @@ class StockmarketLog:
         for t in range(t_end):
             self.add_edges(graph, table, t)
 
-        path = nx.shortest_path(graph, source="0_0",target=f"{t_end}_0", weight="weight")
+        # p = nx.shortest_path(graph, source="0_0",target=f"{t_end}_0", weight="weight")
+        p = nx.bellman_ford_path(graph, source="0_0",target=f"{t_end}_0", weight="weight")
+
+        path = [
+          int(pos.split("_")[-1])
+          for pos in p
+        ]
+
         cost = nx.get_edge_attributes(graph,'cost')
-        
         total = 0
-        for prev, curr in zip(path[:-1], path[1:]):
+        for prev, curr in zip(p[:-1], p[1:]):
             total += cost[(prev, curr)]
         print(total)
+        
+        # plt.figure(3,figsize=(60,12)) 
 
+        # edges = graph.edges()
+        # special = [(u, v) for u, v in zip(p[:-1], p[1:])]
+        # colors = [("red" if (u, v) in special else "black") for u,v in edges]
 
         # pos=nx.get_node_attributes(graph,'pos')
-        # labels = nx.get_edge_attributes(graph,'weight')
-        # nx.draw(graph, pos, node_size=150, node_color='blue', font_size=8, font_weight='bold')
-        # nx.draw_networkx_edge_labels(graph,pos,edge_labels=labels)
-        # plt.savefig("Graph.png", format="PNG")
+        # labels = nx.get_edge_attributes(graph,'cost')
+        # nx.draw(graph, pos, node_size=150, node_color='blue', font_size=6, font_weight='bold', edge_color=colors)
+        # nx.draw_networkx_edge_labels(graph,pos,edge_labels=labels, label_pos=0.25)
+        # plt.savefig(f"Graph_{key}.png", format="PNG")
+
+        return path
 
     
     def add_layer(self, graph : nx.DiGraph, t : int):
@@ -73,9 +86,11 @@ class StockmarketLog:
         
         line = table.iloc[t]
         bids = self.get_positions(StockmarketLog.bid_price_token, StockmarketLog.bid_volume_token, line)
+        bids.sort(reverse=True)
         bids_cum = np.cumsum(bids).tolist()
 
         asks = self.get_positions(StockmarketLog.ask_price_token, StockmarketLog.ask_volume_token, line)
+        asks.sort()
         asks_cum = np.cumsum(asks).tolist()
 
         # Add edges for each node
@@ -96,32 +111,30 @@ class StockmarketLog:
             if not isnan(bid_price) and not isnan(bid_volume):
                 positions.extend([float(bid_price)] * int(bid_volume))
 
-        # Sort positions
-        positions.sort()
-
         return positions
 
 
     def add_edges_from_node(self, graph : nx.DiGraph, i : int, t : int, bids_cum : list, asks_cum : list):
 
-        min_weight = asks_cum[-1]
-
-        graph.add_edge(f"{t}_{i}", f"{t + 1}_{i}", weight=min_weight, cost=0.0)
+        graph.add_edge(f"{t}_{i}", f"{t + 1}_{i}", weight=0.0, cost=0.0)
 
         for delta, j in enumerate(range(i + 1, self.max_pos + 1)[:len(asks_cum)]):
             graph.add_edge(
                 f"{t}_{i}", f"{t + 1}_{j}", 
-                weight=-asks_cum[delta] + min_weight,
+                weight=asks_cum[delta],
                 cost=-asks_cum[delta]
             )
 
         for delta, j in enumerate(range(i - 1, -self.max_pos - 1, -1)[:len(bids_cum)]):
             graph.add_edge(
                 f"{t}_{i}", f"{t + 1}_{j}", 
-                weight=bids_cum[delta] + min_weight,
+                weight=-bids_cum[delta],
                 cost=bids_cum[delta]
             )
 
-
+import json
 if __name__ == "__main__":
-    StockmarketLog("1370d8be-d8f3-4142-8ac8-6cbcd8b3661b.csv", 20)
+    json.dump(
+        StockmarketLog("1370d8be-d8f3-4142-8ac8-6cbcd8b3661b.csv", 20).optimal_positions,
+        open("trades.json", "w")
+    )
