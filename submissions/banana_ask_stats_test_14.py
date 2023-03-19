@@ -106,8 +106,9 @@ class Trader:
                 acceptable_price_buy, acceptable_price_sell = self.get_acceptable_price(order_depth, mean_ask_price, mean_bid_price)
 
                 # BANANA ASK stats
-                for el in order_depth.sell_orders:
-                    banana_ask_stats.add(el)
+                #for el in order_depth.sell_orders:
+                self.banana_ask_stats.add(order_depth.sell_orders)
+                print(order_depth.sell_orders)
 
                 if len(order_depth.sell_orders) > 0:
                     for ask_price in sorted(order_depth.sell_orders.keys()):
@@ -145,39 +146,47 @@ class Trader:
                 # These possibly contain buy or sell orders for PEARLS
                 # Depending on the logic above
 
-        banana_ask_stats.print_stats()
+        self.banana_ask_stats.print_stats()
         return result
 
 class SlidingWindowStatistics:
-    def __init__(self, sliding_window_size = 100, statistics_type):
+
+    def __init__(self, sliding_window_size, statistics_type):
         self.sliding_window_size = sliding_window_size
         self.sliding_window = []
         self.statistics_type = statistics_type
 
     def add(self, order_depth):
-        sliding_window.append(order_depth)
-        if len(sliding_window) > sliding_window_size:
-            sliding_window = sliding_window[-sliding_window_size:]
+        self.sliding_window.append(order_depth)
+        if len(self.sliding_window) > self.sliding_window_size:
+            self.sliding_window = self.sliding_window[-self.sliding_window_size:]
 
     # Outputs flat sorted list of orders in the sliding window
     def flatten(self):
         flat_list = []
-        for order_depth in sliding_window:
-            for price in order_depth.keys():
-                flat_list.extend([price for x in range(order_depth[price])])
+        for order_depth_dict in self.sliding_window:
+            for price in order_depth_dict:
+                flat_list.extend([price for x in range(abs(order_depth_dict[price]))])
+
 
         flat_list.sort()
         return flat_list
 
     def print_stats(self):
         flat_list = self.flatten()
-        output = "[" + str(self.statistics_type) + ","
-        output += "mean:" + str(sum(flat_list) / len(flat_list)) + ","
-        output += "min:" + str(flat_list[0])
-        output += "10th:" + str(flat_list[int(len(flat_list)/10)]) + ","
-        output += "25th:" + str(flat_list[int(len(flat_list)/4)]) + ","
-        output += "50th:" + str(flat_list[int(len(flat_list)/2)]) + ","
-        output += "75th:" + str(flat_list[len(flat_list) - 1 - int(len(flat_list)/4)]) + ","
-        output += "90th:" + str(flat_list[len(flat_list) - 1 - int(len(flat_list)/10)]) + ","
-        output += "max:" + str(flat_list[-1:])
-        output += "]"
+        #print(flat_list)
+        if len(flat_list) > 10:
+            output = "[" + str(self.statistics_type) + ","
+            output += "mean:" + str(int(sum(flat_list) / max(1,len(flat_list)))) + ","
+            output += "min:" + str(flat_list[0]) + ","
+            output += "10th:" + str(flat_list[int(len(flat_list)/10)]) + ","
+            output += "25th:" + str(flat_list[int(len(flat_list)/4)]) + ","
+            output += "50th:" + str(flat_list[int(len(flat_list)/2)]) + ","
+            output += "75th:" + str(flat_list[max(0,len(flat_list) - 1 - int(len(flat_list)/4))]) + ","
+            output += "90th:" + str(flat_list[max(0,len(flat_list) - 1 - int(len(flat_list)/10))]) + ","
+            output += "max:" + str(flat_list[-1:])
+            output += "]"
+        else:
+            output= "[" + str(self.statistics_type) + ", more data needed]"
+
+        print(output)
