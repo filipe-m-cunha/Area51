@@ -89,6 +89,8 @@ class Trader:
 
                 mean_ask_price = min(order_depth.sell_orders.keys())
                 mean_bid_price = max(order_depth.buy_orders.keys())
+                acceptable_price_buy = 4930
+                acceptable_price_sell = 4970
 
                 # For stats calculation
                 if PRINT_BANANA_ASK_STATS:
@@ -97,12 +99,13 @@ class Trader:
                     self.banana_bid_stats.add(order_depth.buy_orders)
 
                 should_buy = self.banana_ask_stats.should_act(mean_ask_price, buy = True)
-                should_sell = not self.banana_ask_stats.should_act(mean_bid_price, buy = False)
+                should_sell = self.banana_ask_stats.should_act(mean_bid_price, buy = False)
 
                 if len(order_depth.sell_orders) > 0:
-                    if should_buy:
+                    #if should_buy:
+                    if True:
                         for ask_price in sorted(order_depth.sell_orders.keys()):
-                            if ask_price > mean_ask_price:
+                            if ask_price >= acceptable_price_buy:
                                 break
                             ask_volume = order_depth.sell_orders[ask_price]
                             if len(orders) >= self.max_concurrent_positions:
@@ -111,9 +114,10 @@ class Trader:
                             orders.append(Order(product, ask_price, -ask_volume))
 
                 if len(order_depth.buy_orders) > 0:
-                    if should_sell:
+                    #if should_sell:
+                    if True:
                         for bid_price in sorted(order_depth.buy_orders.keys(), reverse=True):
-                            if bid_price < mean_bid_price:
+                            if bid_price <= acceptable_price_sell:
                                 break
                             bid_volume = order_depth.buy_orders[bid_price]
                             if len(orders) >= self.max_concurrent_positions:
