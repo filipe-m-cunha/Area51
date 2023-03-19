@@ -5,10 +5,15 @@ from datamodel import OrderDepth, TradingState, Order
 
 
 PRINT_BANANA_ASK_STATS = True
-PRINT_BANANA_BID_STATS = False
+PRINT_BANANA_BID_STATS = True
 PRINT_PEARL_ASK_STATS = False
 PRINT_PEARL_BID_STATS = False
-STAT_SLIDING_WINDOW_SIZE = 100
+MAX_CONCURRENT_POSITION = 20
+MAX_POSITION_PERCENT = 0.2
+STOP_LOSS_PERCENT = 0.1
+TAKE_PROFIT_PERCENT = 0.2
+MOMENTUM_WINDOW_SIZE = 5
+STAT_SLIDING_WINDOW_SIZE = 3
 
 def get_mean_price(orders):
     if len(orders) > 0:
@@ -21,45 +26,18 @@ class Trader:
 
     def __init__(self):
         #Keeping these varaibles hardcoded for now, we will probably need to change them
-        self.max_concurrent_positions = 20
-        self.max_position_percent = 0.2
-        self.stop_loss_percent = 0.1
-        self.take_profit_percent = 0.2
-        self.momentum_factor = 5
+        self.max_concurrent_positions = MAX_CONCURRENT_POSITION
+        self.max_position_percent = MAX_POSITION_PERCENT
+        self.stop_loss_percent = STOP_LOSS_PERCENT
+        self.take_profit_percent = TAKE_PROFIT_PERCENT
+        self.momentum_factor = MOMENTUM_WINDOW_SIZE
         self.bid_history = []
         self.ask_history = []
         self.banana_ask_stats = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, "BANANA ASK")
         self.banana_bid_stats = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, "BANANA BID")
         self.pearl_ask_stats = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, "PEARL ASK")
         self.pearl_bid_stats = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, "PEARL BID")
-
-    def get_acceptable_price(self, order_depth, mean_ask_price, mean_bid_price):
-        if mean_ask_price is None:
-            return None, max(order_depth.buy_orders)
-        if mean_bid_price is None:
-            return min(order_depth.sell_orders), None
-        #Get momentum of the product, aka
-        ask_history_arr = np.array(self.ask_history[-self.momentum_factor:])
-        bid_history_arr = np.array(self.bid_history[-self.momentum_factor:])
-        moving_average_ask = np.mean(ask_history_arr) if len(ask_history_arr) > 0 else None
-        moving_average_bid = np.mean(bid_history_arr) if len(bid_history_arr) > 0 else None
-        momentum_ask = ask_history_arr[-1] - moving_average_ask
-        momentum_bid = bid_history_arr[-1] - moving_average_bid
-
-        if moving_average_ask is None or moving_average_bid is None:
-            return None, None
-
-        if momentum_bid < 0:
-            acceptable_price_buy = moving_average_bid
-        else:
-            acceptable_price_buy = mean_bid_price
-
-        if momentum_ask > 0:
-            acceptable_price_sell = moving_average_ask
-        else:
-            acceptable_price_sell = mean_ask_price
-
-        return acceptable_price_buy, acceptable_price_sell
+        self.banana_positions = []
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
 
@@ -96,14 +74,14 @@ class Trader:
                         if ask_price >= acceptable_price:
                             break
                         ask_volume = order_depth.sell_orders[ask_price]
-                        print("BUY", str(-ask_volume) + "x", ask_price)
+                        print("BUY PEARLS", str(-ask_volume) + "x", ask_price)
                         orders.append(Order(product, ask_price, -ask_volume))
                 if len(order_depth.buy_orders) != 0:
                     for ask_price in sorted(order_depth.buy_orders.keys(), reverse=True):
                         if ask_price <= acceptable_price:
                             break
                         ask_volume = order_depth.buy_orders[ask_price]
-                        print("SELL", str(ask_volume) + "x", ask_price)
+                        print("SELL PEARLS", str(ask_volume) + "x", ask_price)
                         orders.append(Order(product, ask_price, -ask_volume))
                 result[product] = orders
 
@@ -111,48 +89,57 @@ class Trader:
                 order_depth: OrderDepth = state.order_depths[product]
                 orders: list[Order] = []
 
-                mean_ask_price = get_mean_price(order_depth.sell_orders)
-                mean_bid_price = get_mean_price(order_depth.buy_orders)
-
-                #Keep track of product prices
-                self.ask_history.append(mean_ask_price)
-                self.bid_history.append(mean_bid_price)
-
-                acceptable_price_buy, acceptable_price_sell = self.get_acceptable_price(order_depth, mean_ask_price, mean_bid_price)
-
                 # For stats calculation
                 if PRINT_BANANA_ASK_STATS:
                     self.banana_ask_stats.add(order_depth.sell_orders)
                 if PRINT_BANANA_BID_STATS:
                     self.banana_bid_stats.add(order_depth.buy_orders)
 
+                #mean_ask_price = min(order_depth.sell_orders.keys())
+                #mean_bid_price = max(order_depth.buy_orders.keys())
+                mean_ask_price = self.banana_ask_stats.get_mean()
+                mean_bid_price = self.banana_bid_stats.get_mean()
+
+                should_buy = self.banana_ask_stats.should_act(mean_ask_price, buy = True)
+                should_sell = not self.banana_ask_stats.should_act(mean_bid_price, buy = False)
+
                 if len(order_depth.sell_orders) > 0:
+                    #if should_buy:
+                    num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
+
+                    print("bot ask depths: " + str(order_depth.sell_orders))
                     for ask_price in sorted(order_depth.sell_orders.keys()):
-                        if ask_price >= acceptable_price_buy:
+                        if ask_price > self.banana_bid_stats.get_eightith() or len(self.banana_ask_stats.sliding_window) < 3:
                             break
-                        ask_volume = order_depth.sell_orders[ask_price]
+                        ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_positions)))
+    
+                        order_depth.sell_orders[ask_price]
                         if len(orders) >= self.max_concurrent_positions:
                             break
-                        #if (ask_price - current_price) / current_price < self.stop_loss_percent:
-                        #    break
-                        #if (ask_price - current_price) / current_price > self.take_profit_percent:
-                        #    break
                         print("BUY BANANAS", str(-ask_volume) + "x", ask_price)
                         orders.append(Order(product, ask_price, -ask_volume))
+                        num_positions -= ask_volume
+                        #self.banana_positions = self.banana_positions.extend([ask_price for x in range(ask_volume)])
 
                 if len(order_depth.buy_orders) > 0:
+                    #if should_sell:
+                    num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
+
+                    print("bot bid depths: " + str(order_depth.buy_orders))
                     for bid_price in sorted(order_depth.buy_orders.keys(), reverse=True):
-                        if bid_price <= acceptable_price_sell:
+                        if bid_price < mean_bid_price:
                             break
-                        bid_volume = order_depth.buy_orders[bid_price]
+                        bid_volume = min(order_depth.buy_orders[bid_price], num_positions)
+                        #print("bot bid volume: " + str(order_depth.buy_orders[bid_price]))
+                        
+                        order_depth.buy_orders[bid_price]
                         if len(orders) >= self.max_concurrent_positions:
                             break
-                        #if (current_price - bid_price) / current_price < self.stop_loss_percent:
-                        #    break
-                        #if (current_price - bid_price) / current_price > self.take_profit_percent:
-                        #    break
                         print("SELL BANANAS", str(bid_volume) + "x", bid_price)
-                        orders.append(Order(product, bid_price, bid_volume))
+                        orders.append(Order(product, bid_price, -bid_volume))
+                        num_positions -= bid_volume
+                        #self.banana_positions = self.banana_positions[bid_volume:]
+
 
                 # Add all the above orders to the result dict
                 result[product] = orders
@@ -163,6 +150,8 @@ class Trader:
                 # Depending on the logic above
 
         
+        print(state.position)
+
         # Print stats
         if PRINT_BANANA_ASK_STATS:
             self.banana_ask_stats.print_stats()
@@ -180,6 +169,8 @@ class SlidingWindowStatistics:
         self.sliding_window_size = sliding_window_size
         self.sliding_window = []
         self.statistics_type = statistics_type
+        self.mean = 10000
+        self.flat_list = []
 
     def add(self, order_depth):
         self.sliding_window.append(order_depth)
@@ -197,19 +188,46 @@ class SlidingWindowStatistics:
         flat_list.sort()
         return flat_list
 
+    def should_act(self, curr_price, buy = True):
+        order_depth_dict = self.sliding_window[0]
+        if buy:
+            min_momentum_price = min([price for price in order_depth_dict])
+        else:
+            min_momentum_price = max([price for price in order_depth_dict])
+        momentum = curr_price - min_momentum_price
+        if momentum > 0:
+            return True
+        else:
+            return False
+
+    def update_stats(self):
+        self.flat_list = self.flatten()
+        self.mean = int(sum(self.flat_list) / max(1,len(self.flat_list)))
+
+    def get_mean(self):
+        return self.mean
+
+    def get_eightith(self):
+        if len(self.flat_list) > 0:
+            return self.flat_list[max(0,len(self.flat_list) - 1 - int(len(self.flat_list)/5))]
+        else:
+            return 0
+
     def print_stats(self):
-        flat_list = self.flatten()
+        self.update_stats()
+        flat_list = self.flat_list
         #print(flat_list)
         if len(flat_list) > 10:
             output = "[" + str(self.statistics_type) + ","
-            output += "mean:" + str(int(sum(flat_list) / max(1,len(flat_list)))) + ","
+            output += "mean:" + str(self.mean) + ","
             output += "min:" + str(flat_list[0]) + ","
             output += "10th:" + str(flat_list[int(len(flat_list)/10)]) + ","
             output += "25th:" + str(flat_list[int(len(flat_list)/4)]) + ","
             output += "50th:" + str(flat_list[int(len(flat_list)/2)]) + ","
             output += "75th:" + str(flat_list[max(0,len(flat_list) - 1 - int(len(flat_list)/4))]) + ","
             output += "90th:" + str(flat_list[max(0,len(flat_list) - 1 - int(len(flat_list)/10))]) + ","
-            output += "max:" + str(flat_list[-1:])
+            output += "max:" + str(flat_list[-1:]) + ","
+            output += "vol:" + str(len(flat_list))
             output += "]"
         else:
             output= "[" + str(self.statistics_type) + ", more data needed]"
