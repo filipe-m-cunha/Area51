@@ -123,7 +123,7 @@ class Trader:
                             if len(orders) >= self.max_concurrent_positions:
                                 break
                             print("SELL BANANAS", str(bid_volume) + "x", bid_price)
-                            orders.append(Order(product, bid_price, bid_volume))
+                            orders.append(Order(product, bid_price, -bid_volume))
 
                 # Add all the above orders to the result dict
                 result[product] = orders
