@@ -143,13 +143,11 @@ class Trader:
                     num_long_positions = len(self.banana_long_positions)
                     num_short_positions = len(self.banana_short_positions)
                     can_short = True
-                    # OPEN LONG
-                    print("bot ask depths: " + str(order_depth.sell_orders))
 
                     # CLOSE SHORT
                     for ask_price in sorted(order_depth.sell_orders.keys(), reverse=True):
                         ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
-                        if ask_price < np.mean(np.array(self.banana_short_positions[:ask_volume])) and can_short:
+                        if ask_price < np.mean(np.array(self.banana_short_positions[:ask_volume])):
                             can_short = False
                             # ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
                             print("BUY BANANAS SHORT", str(-ask_volume) + "x", ask_price)
@@ -157,14 +155,16 @@ class Trader:
                             num_short_positions -= ask_volume
                             self.banana_short_positions = self.banana_short_positions[abs(ask_volume):]
 
-                    #OPEN LONG
+                    # OPEN LONG
+                    print("bot ask depths: " + str(order_depth.sell_orders))
                     for ask_price in sorted(order_depth.sell_orders.keys()):
-                        if ask_price <= self.banana_bid_stats.get_max() and len(
-                            self.banana_bid_stats.sliding_window) > 2:
+                        if ask_price <= self.banana_bid_stats.get_eightith() and len(
+                                self.banana_bid_stats.sliding_window) > 2:
+                            can_short = False
                             ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_long_positions)))
                             print("BUY BANANAS LONG", str(-ask_volume) + "x", ask_price)
                             orders.append(Order(product, ask_price, -ask_volume))
-                            num_long_positions += ask_volume
+                            num_long_positions -= ask_volume
                             self.banana_long_positions += [ask_price for x in range(abs(ask_volume))]
 
                 # Add all the above orders to the result dict
