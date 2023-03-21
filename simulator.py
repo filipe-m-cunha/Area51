@@ -16,8 +16,8 @@ trader = Trader()
 INPUT_FILE_PATH = 'data/prices_round_1_day_0.csv'
 #INPUT_FILE_PATH = 'data/tutorial_data.csv'
 #TRADES_OUTPUT_FILE_PATH = 'data/trades_round_1_day_0_simulator.csv'
-TRADES_OUTPUT_FILE_PATH = 'data/trades_tutorial_simulator.csv'
-PRICES_OUTPUT_FILE_PATH = 'data/prices_tutorial_simulator.csv'
+TRADES_OUTPUT_FILE_PATH = 'data/trades_round1_simulator.csv'
+PRICES_OUTPUT_FILE_PATH = 'data/prices_round1_simulator.csv'
 df = pd.read_csv(INPUT_FILE_PATH, delimiter=';')
 df.set_index('timestamp')
 
@@ -107,8 +107,6 @@ for i in range(0, MAX_TIME, TIME_STEP):
                     #position[c] += fulfilled_volume
                     assert(abs(position[c]) <= position_limits[c])
 
-
-
             # SELL order
             elif order.quantity < 0:
                 if order.price in order_depths[c].buy_orders:
@@ -140,6 +138,8 @@ for i in range(0, MAX_TIME, TIME_STEP):
                     own_trades_custom.append([sell_trade, 'SELL', position[c], cumulative_profit[c], long_positions[c], short_positions[c]])
                     assert(abs(position[c]) <= position_limits[c])
 
+        df.loc[(df['timestamp'] == i) & (df['product'] == c), 'profit_and_loss'] = cumulative_profit[c]
+
 
 # Save trade information in a custom format csv, that includes BUY/SELL information
 trades_df = pd.DataFrame(columns=['timestamp', 'buyer', 'seller', 'symbol', 'currency', 'price', 'quantity', 'operation', 'position', 'profit', 'long_positions', 'short_positions'])
@@ -149,16 +149,5 @@ for t in own_trades_custom:
 trades_df.to_csv(TRADES_OUTPUT_FILE_PATH)
 print(trades_df)
 
-prices_df = df.copy()
-for i in range(len(commodities) * TIME_STEP, MAX_TIME, TIME_STEP):
-    for c in commodities:
-        # previous profit of commodity
-        profit = prices_df[(prices_df['timestamp'] == i - TIME_STEP) & (prices_df['product'] == c)].iloc[0]['profit_and_loss']
-        if not trades_df[(trades_df['timestamp'] == i) & (trades_df['symbol'] == c)].empty:
-            profit = trades_df[(trades_df['timestamp'] == i) & (trades_df['symbol'] == c)].iloc[0]['profit']
-        
-        prices_df[(prices_df['timestamp'] == i) & (prices_df['product'] == c)].iloc[0]['profit_and_loss'] = profit
-
-prices_df.to_csv(PRICES_OUTPUT_FILE_PATH, sep=';')
-
-print(prices_df)
+df.to_csv(PRICES_OUTPUT_FILE_PATH, sep=';')
+print(df)
