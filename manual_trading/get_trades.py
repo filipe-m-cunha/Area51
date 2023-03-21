@@ -1,4 +1,5 @@
 import argparse
+from copy import deepcopy
 from typing import Dict
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -9,16 +10,22 @@ import json
 
 def bellman_ford(G : nx.DiGraph, start : str, n_iter : int):
 
+    # Get initial conditions
     nx.set_node_attributes(G, {start: 1}, name="gain")
     nx.set_node_attributes(G, {start: [start]}, name="path")
     prices = nx.get_edge_attributes(G, "price")
 
+    # Run Bellman Ford for n_iterations
     for _ in range(n_iter):
-        gains = nx.get_node_attributes(G, name="gain")
-        path_old = nx.get_node_attributes(G, name="path")
 
+        # In each iteration get copy of state from previous iteration
+        gains = deepcopy(nx.get_node_attributes(G, name="gain"))
+        path_old = deepcopy(nx.get_node_attributes(G, name="path"))
+
+        # Iterate over all edges
         for p1, p2 in G.edges:
             
+            # Compute updated gains and compare to old gains
             gain_new = gains[p1] * prices[(p1, p2)]
             gain_old = nx.get_node_attributes(G, name="gain")[p2]
             
