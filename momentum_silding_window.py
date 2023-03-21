@@ -281,6 +281,12 @@ class SlidingWindowStatistics:
         else:
             return 0
 
+    def get_percentile(self, perc):
+        if len(self.flat_list) > 0:
+            return np.percentile(np.array(self.flat_list), perc)
+        else:
+            return 0
+
     def print_stats(self):
         self.update_stats()
         flat_list = self.flat_list
