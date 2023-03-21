@@ -99,6 +99,7 @@ if __name__ == "__main__":
     parser.add_argument('--filename', type=Path)
     parser.add_argument('--out_file', type=Path, default=Path("manual_trade.png"))
     parser.add_argument('--start', type=str, default="Shells")
+    parser.add_argument('--n_iter', type=int, default=5)
     args = parser.parse_args()
 
     # Load json with data
@@ -108,7 +109,7 @@ if __name__ == "__main__":
 
     # Make graph
     G = make_graph(data)
-    bellman_ford(G, args.start, 5)
+    bellman_ford(G, args.start, args.n_iter)
 
     path_string = " -> ".join(nx.get_node_attributes(G, name="path")[args.start])
     print(f"Optimal strategy:\t{path_string}")
