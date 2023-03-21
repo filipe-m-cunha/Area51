@@ -41,9 +41,10 @@ class Trader:
         self.banana_long_positions = []
         self.banana_short_positions = []
         self.sliding_window_means = []
-        
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
+
+
         """
         Only method required. It takes all buy and sell orders for all symbols as an input,
         and outputs a list of orders to be sent
@@ -109,13 +110,13 @@ class Trader:
                     #num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
                     num_long_positions = len(self.banana_long_positions)
                     num_short_positions = len(self.banana_short_positions)
-                    # can_short = False
-                    # if len(self.sliding_window_means) > 3:
-                    #     if (self.sliding_window_means[-3] >= self.sliding_window_means[-2] and 
-                    #     self.sliding_window_means[-2] >= self.sliding_window_means[-1] and
-                    #     self.sliding_window_means[-3] > self.sliding_window_means[-1]):
-                    #         can_short = True
-                    can_short = True
+                    can_short = False
+                    if len(self.sliding_window_means) > 3:
+                        if (self.sliding_window_means[-3] >= self.sliding_window_means[-2] and 
+                        self.sliding_window_means[-2] >= self.sliding_window_means[-1] and
+                        self.sliding_window_means[-3] > self.sliding_window_means[-1]):
+                            can_short = True
+                    # can_short = True
                     print("bot bid depths: " + str(order_depth.buy_orders))
 
                     # CLOSE LONG
