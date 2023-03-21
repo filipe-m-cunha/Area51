@@ -3,7 +3,6 @@ import numpy as np
 from statistics import mean
 from datamodel import OrderDepth, TradingState, Order
 
-
 PRINT_BANANA_ASK_STATS = True
 PRINT_BANANA_BID_STATS = True
 PRINT_PEARL_ASK_STATS = False
@@ -15,6 +14,7 @@ TAKE_PROFIT_PERCENT = 0.2
 MOMENTUM_WINDOW_SIZE = 5
 STAT_SLIDING_WINDOW_SIZE = 7
 
+
 def get_mean_price(orders):
     if len(orders) > 0:
         return mean(orders.keys())
@@ -25,7 +25,7 @@ def get_mean_price(orders):
 class Trader:
 
     def __init__(self):
-        #Keeping these varaibles hardcoded for now, we will probably need to change them
+        # Keeping these varaibles hardcoded for now, we will probably need to change them
         self.max_concurrent_positions = MAX_CONCURRENT_POSITION
         self.max_position_percent = MAX_POSITION_PERCENT
         self.stop_loss_percent = STOP_LOSS_PERCENT
@@ -41,7 +41,6 @@ class Trader:
         self.banana_long_positions = []
         self.banana_short_positions = []
         self.sliding_window_means = []
-        
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         """
@@ -97,16 +96,16 @@ class Trader:
                 if PRINT_BANANA_BID_STATS:
                     self.banana_bid_stats.add(order_depth.buy_orders)
 
-                #mean_ask_price = min(order_depth.sell_orders.keys())
-                #mean_bid_price = max(order_depth.buy_orders.keys())
+                # mean_ask_price = min(order_depth.sell_orders.keys())
+                # mean_bid_price = max(order_depth.buy_orders.keys())
                 mean_ask_price = self.banana_ask_stats.get_mean()
                 mean_bid_price = self.banana_bid_stats.get_mean()
 
-                should_buy = self.banana_ask_stats.should_act(mean_ask_price, buy = True)
-                should_sell = not self.banana_ask_stats.should_act(mean_bid_price, buy = False)
+                should_buy = self.banana_ask_stats.should_act(mean_ask_price, buy=True)
+                should_sell = not self.banana_ask_stats.should_act(mean_bid_price, buy=False)
 
                 if len(order_depth.buy_orders) > 0:
-                    #num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
+                    # num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
                     num_long_positions = len(self.banana_long_positions)
                     num_short_positions = len(self.banana_short_positions)
                     # can_short = False
@@ -122,8 +121,8 @@ class Trader:
                     for bid_price in sorted(order_depth.buy_orders.keys(), reverse=True):
                         bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
                         if bid_price > np.mean(np.array(self.banana_long_positions[:bid_volume])):
-                            can_short = False
-                            #bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
+                            #can_short = False
+                            # bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
                             print("SELL BANANAS LONG", str(bid_volume) + "x", bid_price)
                             orders.append(Order(product, bid_price, -bid_volume))
                             num_long_positions -= bid_volume
@@ -131,46 +130,45 @@ class Trader:
 
                     # OPEN SHORT
                     for bid_price in sorted(order_depth.buy_orders.keys()):
-                        if bid_price > self.banana_bid_stats.get_max() and len(self.banana_ask_stats.sliding_window) > 2 and can_short:
+                        if bid_price > self.banana_bid_stats.get_max() + 2 and len(
+                                self.banana_ask_stats.sliding_window) > 2 and can_short:
                             bid_volume = min(order_depth.buy_orders[bid_price], 20 - num_short_positions)
                             print("SELL BANANAS SHORT", str(bid_volume) + "x", bid_price)
                             orders.append(Order(product, bid_price, -bid_volume))
                             num_short_positions += abs(bid_volume)
                             self.banana_short_positions += [bid_price for x in range(abs(bid_volume))]
 
-
-
                 if len(order_depth.sell_orders) > 0:
-                    #num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
+                    # num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
                     num_long_positions = len(self.banana_long_positions)
                     num_short_positions = len(self.banana_short_positions)
                     can_short = True
                     # OPEN LONG
                     print("bot ask depths: " + str(order_depth.sell_orders))
-                    for ask_price in sorted(order_depth.sell_orders.keys()):
-                        if ask_price <= self.banana_bid_stats.get_eightith() and len(self.banana_bid_stats.sliding_window) > 2:
-                            can_short = False
-                            ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_long_positions)))
-                            print("BUY BANANAS LONG", str(-ask_volume) + "x", ask_price)
-                            orders.append(Order(product, ask_price, -ask_volume))
-                            num_long_positions -= ask_volume
-                            self.banana_long_positions += [ask_price for x in range(abs(ask_volume))]
 
                     # CLOSE SHORT
                     for ask_price in sorted(order_depth.sell_orders.keys(), reverse=True):
                         ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
-                        if ask_price < np.mean(np.array(self.banana_short_positions[:ask_volume])):
+                        if ask_price < np.mean(np.array(self.banana_short_positions[:ask_volume])) and can_short:
                             can_short = False
-                            #ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
+                            # ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
                             print("BUY BANANAS SHORT", str(-ask_volume) + "x", ask_price)
                             orders.append(Order(product, ask_price, -ask_volume))
                             num_short_positions -= ask_volume
                             self.banana_short_positions = self.banana_short_positions[abs(ask_volume):]
 
+                    #OPEN LONG
+                    for ask_price in sorted(order_depth.sell_orders.keys()):
+                        if ask_price <= self.banana_bid_stats.get_max() and len(
+                            self.banana_bid_stats.sliding_window) > 2:
+                            ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_long_positions)))
+                            print("BUY BANANAS LONG", str(-ask_volume) + "x", ask_price)
+                            orders.append(Order(product, ask_price, -ask_volume))
+                            num_long_positions += ask_volume
+                            self.banana_long_positions += [ask_price for x in range(abs(ask_volume))]
 
                 # Add all the above orders to the result dict
                 result[product] = orders
-
 
                 # Return the dict of orders
                 # These possibly contain buy or sell orders for PEARLS
@@ -195,6 +193,7 @@ class Trader:
             self.pearl_bid_stats.print_stats()
         return result
 
+
 class SlidingWindowStatistics:
 
     def __init__(self, sliding_window_size, statistics_type):
@@ -216,14 +215,13 @@ class SlidingWindowStatistics:
             for price in order_depth_dict:
                 flat_list.extend([price for x in range(abs(order_depth_dict[price]))])
 
-
         flat_list.sort()
         return flat_list
 
-    def should_act(self, curr_price, buy = True):
+    def should_act(self, curr_price, buy=True):
         order_depth_dict = self.sliding_window[0]
         if buy:
-            min_momentum_price =  np.mean(np.array([price for price in order_depth_dict]))
+            min_momentum_price = np.mean(np.array([price for price in order_depth_dict]))
         else:
             min_momentum_price = max([price for price in order_depth_dict])
         momentum = curr_price - min_momentum_price
@@ -234,7 +232,7 @@ class SlidingWindowStatistics:
 
     def update_stats(self):
         self.flat_list = self.flatten()
-        self.mean = int(sum(self.flat_list) / max(1,len(self.flat_list)))
+        self.mean = int(sum(self.flat_list) / max(1, len(self.flat_list)))
 
     def get_mean(self):
         return self.mean
@@ -247,31 +245,31 @@ class SlidingWindowStatistics:
 
     def get_tenth(self):
         if len(self.flat_list) > 0:
-            return self.flat_list[int(len(self.flat_list)/10)]
+            return self.flat_list[int(len(self.flat_list) / 10)]
         else:
             return 0
 
     def get_twentith(self):
         if len(self.flat_list) > 0:
-            return self.flat_list[int(len(self.flat_list)/5)]
+            return self.flat_list[int(len(self.flat_list) / 5)]
         else:
             return 0
 
     def get_median(self):
         if len(self.flat_list) > 0:
-            return self.flat_list[int(len(self.flat_list)/2)]
+            return self.flat_list[int(len(self.flat_list) / 2)]
         else:
             return 0
 
     def get_eightith(self):
         if len(self.flat_list) > 0:
-            return self.flat_list[max(0,len(self.flat_list) - 1 - int(len(self.flat_list)/5))]
+            return self.flat_list[max(0, len(self.flat_list) - 1 - int(len(self.flat_list) / 5))]
         else:
             return 0
 
     def get_ninetith(self):
         if len(self.flat_list) > 0:
-            return self.flat_list[max(0,len(self.flat_list) - 1 - int(len(self.flat_list)/10))]
+            return self.flat_list[max(0, len(self.flat_list) - 1 - int(len(self.flat_list) / 10))]
         else:
             return 0
 
@@ -284,20 +282,20 @@ class SlidingWindowStatistics:
     def print_stats(self):
         self.update_stats()
         flat_list = self.flat_list
-        #print(flat_list)
+        # print(flat_list)
         if len(flat_list) > 10:
             output = "[" + str(self.statistics_type) + ","
             output += "mean:" + str(self.mean) + ","
             output += "min:" + str(flat_list[0]) + ","
-            output += "10th:" + str(flat_list[int(len(flat_list)/10)]) + ","
-            output += "25th:" + str(flat_list[int(len(flat_list)/4)]) + ","
-            output += "50th:" + str(flat_list[int(len(flat_list)/2)]) + ","
-            output += "75th:" + str(flat_list[max(0,len(flat_list) - 1 - int(len(flat_list)/4))]) + ","
-            output += "90th:" + str(flat_list[max(0,len(flat_list) - 1 - int(len(flat_list)/10))]) + ","
+            output += "10th:" + str(flat_list[int(len(flat_list) / 10)]) + ","
+            output += "25th:" + str(flat_list[int(len(flat_list) / 4)]) + ","
+            output += "50th:" + str(flat_list[int(len(flat_list) / 2)]) + ","
+            output += "75th:" + str(flat_list[max(0, len(flat_list) - 1 - int(len(flat_list) / 4))]) + ","
+            output += "90th:" + str(flat_list[max(0, len(flat_list) - 1 - int(len(flat_list) / 10))]) + ","
             output += "max:" + str(flat_list[-1:]) + ","
             output += "vol:" + str(len(flat_list))
             output += "]"
         else:
-            output= "[" + str(self.statistics_type) + ", more data needed]"
+            output = "[" + str(self.statistics_type) + ", more data needed]"
 
         print(output)

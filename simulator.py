@@ -5,7 +5,7 @@ from datamodel import OrderDepth, TradingState, Order, Listing, Trade
 from typing import Dict, List
 
 #! change this import to get the newest Trader
-from momentum_silding_window import Trader
+from momentum_sldiing_window_2 import Trader
 
 # should amount to implementing the Wiki:
 # https://imc-prosperity.notion.site/Writing-an-Algorithm-in-Python-c44b46f32941430fa1eccb6ff054be26
@@ -16,7 +16,7 @@ trader = Trader()
 #INPUT_FILE_PATH = 'data/prices_round_1_day_0.csv'
 INPUT_FILE_PATH = 'data/tutorial_data.csv'
 #TRADES_OUTPUT_FILE_PATH = 'data/trades_round_1_simulator.csv'
-TRADES_OUTPUT_FILE_PATH = 'data/trades_tutorial_simulator.csv'
+TRADES_OUTPUT_FILE_PATH = 'data/trades_0_simulator.csv'
 df = pd.read_csv(INPUT_FILE_PATH, delimiter=';')
 df.set_index('timestamp')
 
