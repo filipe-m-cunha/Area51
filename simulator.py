@@ -37,6 +37,7 @@ short_positions = { c:[] for c in commodities}
 cumulative_profit = { c:0 for c in commodities }
 
 # simulate for one day with 10000 timesteps
+# number below should be 200000 for tutorial and 1000000 for round 1
 for i in range(0, 200000, 100):
     curr_time_df = df[df['timestamp'] == int(i)]
     order_depths = {}
