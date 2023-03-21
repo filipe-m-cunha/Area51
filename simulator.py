@@ -15,8 +15,9 @@ trader = Trader()
 
 #INPUT_FILE_PATH = 'data/prices_round_1_day_0.csv'
 INPUT_FILE_PATH = 'data/tutorial_data.csv'
-#TRADES_OUTPUT_FILE_PATH = 'data/trades_round_1_simulator.csv'
+#TRADES_OUTPUT_FILE_PATH = 'data/trades_round_1_day_0_simulator.csv'
 TRADES_OUTPUT_FILE_PATH = 'data/trades_tutorial_simulator.csv'
+PRICES_OUTPUT_FILE_PATH = 'data/prices_tutorial_simulator.csv'
 df = pd.read_csv(INPUT_FILE_PATH, delimiter=';')
 df.set_index('timestamp')
 
@@ -38,7 +39,9 @@ cumulative_profit = { c:0 for c in commodities }
 
 # simulate for one day with 10000 timesteps
 # number below should be 200000 for tutorial and 1000000 for round 1
-for i in range(0, 200000, 100):
+MAX_TIME = 200000
+TIME_STEP = 100
+for i in range(0, MAX_TIME, TIME_STEP):
     curr_time_df = df[df['timestamp'] == int(i)]
     order_depths = {}
 
@@ -145,3 +148,17 @@ for t in own_trades_custom:
 
 trades_df.to_csv(TRADES_OUTPUT_FILE_PATH)
 print(trades_df)
+
+prices_df = df.copy()
+for i in range(len(commodities) * TIME_STEP, MAX_TIME, TIME_STEP):
+    for c in commodities:
+        # previous profit of commodity
+        profit = prices_df[(prices_df['timestamp'] == i - TIME_STEP) & (prices_df['product'] == c)].iloc[0]['profit_and_loss']
+        if not trades_df[(trades_df['timestamp'] == i) & (trades_df['symbol'] == c)].empty:
+            profit = trades_df[(trades_df['timestamp'] == i) & (trades_df['symbol'] == c)].iloc[0]['profit']
+        
+        prices_df[(prices_df['timestamp'] == i) & (prices_df['product'] == c)].iloc[0]['profit_and_loss'] = profit
+
+prices_df.to_csv(PRICES_OUTPUT_FILE_PATH, sep=';')
+
+print(prices_df)
