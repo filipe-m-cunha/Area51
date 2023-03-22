@@ -3,10 +3,8 @@ import numpy as np
 from statistics import mean
 from datamodel import OrderDepth, TradingState, Order
 
-PRINT_BANANA_ASK_STATS = True
-PRINT_BANANA_BID_STATS = True
-PRINT_PEARL_ASK_STATS = False
-PRINT_PEARL_BID_STATS = False
+PRINT_PEARL = False
+PRINT_PRODUCTS = {"BANANAS": True, "COCONUTS": True, "PINA_COLADAS": True}
 STAT_SLIDING_WINDOW_SIZE = 7
 
 class Trader:
@@ -16,10 +14,7 @@ class Trader:
         self.bid_history = []
         self.ask_history = []
         self.sliding_window_size = STAT_SLIDING_WINDOW_SIZE
-        self.banana_ask_stats = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, "BANANA ASK")
-        self.banana_bid_stats = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, "BANANA BID")
-        self.pearl_ask_stats = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, "PEARL ASK")
-        self.pearl_bid_stats = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, "PEARL BID")
+        self.sliding_windows = {}
         self.banana_long_positions = []
         self.banana_short_positions = []
         self.banana_short_time = []
@@ -51,10 +46,10 @@ class Trader:
                 acceptable_price = 10000
 
                 # For stats calculation
-                if PRINT_PEARL_ASK_STATS:
-                    self.pearl_ask_stats.add(order_depth.sell_orders)
-                if PRINT_PEARL_BID_STATS:
-                    self.pearl_bid_stats.add(order_depth.buy_orders)
+                #if PRINT_PEARL_ASK_STATS:
+                #    self.pearl_ask_stats.add(order_depth.sell_orders)
+                #if PRINT_PEARL_BID_STATS:
+                #    self.pearl_bid_stats.add(order_depth.buy_orders)
 
                 if len(order_depth.sell_orders) > 0:
                     # Sort and check whether any orders
@@ -73,51 +68,59 @@ class Trader:
                         orders.append(Order(product, ask_price, -ask_volume))
                 result[product] = orders
 
-            if product == 'BANANAS':
+            else:
+                if product not in self.sliding_windows.keys():
+                    sliding_window_ask = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_ASK")
+                    sliding_window_bid = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_BID")
+                    self.sliding_windows[product] = [sliding_window_ask, sliding_window_bid, [], [], [], []]
+
                 order_depth: OrderDepth = state.order_depths[product]
                 orders: list[Order] = []
 
-                # For stats calculation
-                if PRINT_BANANA_ASK_STATS:
-                    self.banana_ask_stats.add(order_depth.sell_orders)
-                if PRINT_BANANA_BID_STATS:
-                    self.banana_bid_stats.add(order_depth.buy_orders)
+                sliding_window_ask = self.sliding_windows[product][0]
+                sliding_window_bid = self.sliding_windows[product][1]
+                long_positions = self.sliding_windows[product][2]
+                short_positions = self.sliding_windows[product][3]
+                long_time = self.sliding_windows[product][4]
+                short_time = self.sliding_windows[product][5]
+
+                if PRINT_PRODUCTS[product]:
+                    sliding_window_ask.add(order_depth.sell_orders)
+                    sliding_window_bid.add(order_depth.buy_orders)
 
                 if len(order_depth.buy_orders) > 0:
-                    # num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
-                    num_long_positions = len(self.banana_long_positions)
-                    num_short_positions = len(self.banana_short_positions)
+                    num_long_positions = len(long_positions)
+                    num_short_positions = len(short_positions)
                     can_short = True
-                    can_long = True
-                    print("bot bid depths: " + str(order_depth.buy_orders))
+                    print("bot bid depths: ", str(order_depth.buy_orders))
 
                     # CLOSE LONG
                     for bid_price in sorted(order_depth.buy_orders.keys(), reverse=True):
                         bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
-                        if bid_price > np.mean(np.array(self.banana_long_positions[:bid_volume])) \
-                            or np.mean(np.array(self.banana_long_time[:bid_volume])) > 150 and can_long:
+                        if bid_price > np.mean(np.array(long_positions[:bid_volume])) \
+                            or np.mean(np.array(long_time[:bid_volume])) > 150 and can_long:
                             #can_short = False
                             # bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
                             print("SELL BANANAS LONG", str(bid_volume) + "x", bid_price)
                             orders.append(Order(product, bid_price, -bid_volume))
                             num_long_positions -= bid_volume
-                            self.banana_long_positions = self.banana_long_positions[bid_volume:]
-                            self.banana_long_time = self.banana_long_time[bid_volume:]
+                            long_positions = long_positions[bid_volume:]
+                            long_time = long_time[bid_volume:]
 
                     # OPEN SHORT
                     for bid_price in sorted(order_depth.buy_orders.keys()):
-                        if bid_price > self.banana_ask_stats.get_tenth() - 2 and len(
-                                self.banana_ask_stats.sliding_window) > 2 and can_short:
+                        if bid_price > sliding_window_ask.get_tenth() - 2 and len(
+                                sliding_window_ask.sliding_window) > 2 and can_short:
                             bid_volume = min(order_depth.buy_orders[bid_price], 20 - num_short_positions)
                             print("SELL BANANAS SHORT", str(bid_volume) + "x", bid_price)
                             orders.append(Order(product, bid_price, -bid_volume))
                             num_short_positions += abs(bid_volume)
-                            self.banana_short_positions += [bid_price for x in range(abs(bid_volume))]
-                            self.banana_short_time += [0 for x in range(abs(bid_volume))]
+                            short_positions += [bid_price for x in range(abs(bid_volume))]
+                            short_time += [0 for x in range(abs(bid_volume))]
 
                 if len(order_depth.sell_orders) > 0:
-                    num_long_positions = len(self.banana_long_positions)
-                    num_short_positions = len(self.banana_short_positions)
+                    num_long_positions = len(long_positions)
+                    num_short_positions = len(short_positions)
                     can_short = True
                     can_long = True
 
@@ -125,26 +128,33 @@ class Trader:
                     for ask_price in sorted(order_depth.sell_orders.keys(), reverse=True):
                         ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
                         # bug: should do abs(ask_volume), but nothing has beaten this...
-                        if ask_price < np.mean(np.array(self.banana_short_positions[:ask_volume])) - 2 \
-                            or np.mean(np.array(self.banana_short_time[:ask_volume])) > 180 and can_short:
-                            # ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
+                        if ask_price < np.mean(np.array(short_positions[:ask_volume])) - 2 \
+                            or np.mean(np.array(short_time[:ask_volume])) > 180 and can_short:
+                        # ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
                             print("BUY BANANAS SHORT", str(-ask_volume) + "x", ask_price)
                             orders.append(Order(product, ask_price, -ask_volume))
                             num_short_positions -= ask_volume
-                            self.banana_short_positions = self.banana_short_positions[abs(ask_volume):]
-                            self.banana_short_time = self.banana_short_time[abs(ask_volume):]
+                            short_positions = short_positions[abs(ask_volume):]
+                            short_time = short_time[abs(ask_volume):]
 
                     # OPEN LONG
                     print("bot ask depths: " + str(order_depth.sell_orders))
                     for ask_price in sorted(order_depth.sell_orders.keys()):
-                        if ask_price <= self.banana_bid_stats.get_ninetith()  and len(
-                                self.banana_bid_stats.sliding_window) > 2 and can_long:
+                        if ask_price <= sliding_window_bid.get_ninetith() and len(
+                            sliding_window_bid.sliding_window) > 2 and can_long:
                             ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_long_positions)))
                             print("BUY BANANAS LONG", str(-ask_volume) + "x", ask_price)
                             orders.append(Order(product, ask_price, -ask_volume))
                             num_long_positions -= ask_volume
-                            self.banana_long_positions += [ask_price for x in range(abs(ask_volume))]
-                            self.banana_long_time += [0 for x in range(abs(ask_volume))]
+                            long_positions += [ask_price for x in range(abs(ask_volume))]
+                            long_time += [0 for x in range(abs(ask_volume))]
+
+                self.sliding_windows[product][0] = sliding_window_ask
+                self.sliding_windows[product][1] = sliding_window_bid
+                self.sliding_windows[product][2] = long_positions
+                self.sliding_windows[product][3] = short_positions
+                self.sliding_windows[product][4] = long_time
+                self.sliding_windows[product][5] =  short_time
 
                 # Add all the above orders to the result dict
                 result[product] = orders
@@ -153,23 +163,23 @@ class Trader:
                 # These possibly contain buy or sell orders for PEARLS
                 # Depending on the logic above
 
-        if state.timestamp % (self.sliding_window_size * 2 * 100) == 0:
-            self.sliding_window_means.append(self.banana_ask_stats.get_mean())
+        for product in state.order_depths.keys():
 
-        print(state.position)
-        print(self.banana_long_positions)
-        print(self.banana_short_positions)
-        # print(self.sliding_window_means)
+            if product != 'PEARLS':
 
-        # Print stats
-        if PRINT_BANANA_ASK_STATS:
-            self.banana_ask_stats.print_stats()
-        if PRINT_BANANA_BID_STATS:
-            self.banana_bid_stats.print_stats()
-        if PRINT_PEARL_ASK_STATS:
-            self.pearl_ask_stats.print_stats()
-        if PRINT_PEARL_BID_STATS:
-            self.pearl_bid_stats.print_stats()
+                if state.timestamp % (self.sliding_window_size * 2 * 100) == 0:
+                    self.sliding_window_means.append(self.sliding_windows[product][0].get_mean())
+
+                print(state.position)
+                print(self.sliding_windows[product][2])
+                print(self.sliding_windows[product][3])
+
+                # Print stats
+                if PRINT_PRODUCTS[product]:
+                    self.sliding_windows[product][0].print_stats()
+                    self.sliding_windows[product][1].print_stats()
+
+
         return result
 
 

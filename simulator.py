@@ -13,7 +13,7 @@ from momentum_sldiing_window_2 import Trader
 # our trader
 trader = Trader()
 
-INPUT_FILE_PATH = 'data/prices_round_1_day_0.csv'
+INPUT_FILE_PATH = 'data/island-data-bottle-round-1/island-data-bottle-round-1/prices_round_1_day_-1.csv'
 #INPUT_FILE_PATH = 'data/tutorial_data.csv'
 #TRADES_OUTPUT_FILE_PATH = 'data/trades_round_1_day_0_simulator.csv'
 TRADES_OUTPUT_FILE_PATH = 'data/trades_round1_simulator.csv'
