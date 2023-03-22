@@ -120,7 +120,7 @@ class Trader:
                     # CLOSE LONG
                     for bid_price in sorted(order_depth.buy_orders.keys(), reverse=True):
                         bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
-                        if bid_price > min(np.mean(np.array(self.banana_long_positions[:bid_volume])), np.mean(np.array(self.banana_long_positions))):
+                        if bid_price > np.mean(np.array(self.banana_long_positions[:bid_volume])):
                             #can_short = False
                             # bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
                             print("SELL BANANAS LONG", str(bid_volume) + "x", bid_price)
@@ -147,7 +147,7 @@ class Trader:
                     # CLOSE SHORT
                     for ask_price in sorted(order_depth.sell_orders.keys(), reverse=True):
                         ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
-                        if ask_price < np.mean(np.array(self.banana_short_positions[:ask_volume])):
+                        if ask_price < np.mean(np.array(self.banana_short_positions[:ask_volume])) - 2:
                             can_short = False
                             # ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
                             print("BUY BANANAS SHORT", str(-ask_volume) + "x", ask_price)
@@ -158,7 +158,7 @@ class Trader:
                     # OPEN LONG
                     print("bot ask depths: " + str(order_depth.sell_orders))
                     for ask_price in sorted(order_depth.sell_orders.keys()):
-                        if ask_price <= self.banana_bid_stats.get_ninetith() and len(
+                        if ask_price <= self.banana_bid_stats.get_ninetith()  and len(
                                 self.banana_bid_stats.sliding_window) > 2:
                             can_short = False
                             ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_long_positions)))
