@@ -7,30 +7,12 @@ PRINT_BANANA_ASK_STATS = True
 PRINT_BANANA_BID_STATS = True
 PRINT_PEARL_ASK_STATS = False
 PRINT_PEARL_BID_STATS = False
-MAX_CONCURRENT_POSITION = 20
-MAX_POSITION_PERCENT = 0.2
-STOP_LOSS_PERCENT = 0.1
-TAKE_PROFIT_PERCENT = 0.2
-MOMENTUM_WINDOW_SIZE = 5
 STAT_SLIDING_WINDOW_SIZE = 7
-
-
-def get_mean_price(orders):
-    if len(orders) > 0:
-        return mean(orders.keys())
-    else:
-        return None
-
 
 class Trader:
 
     def __init__(self):
         # Keeping these varaibles hardcoded for now, we will probably need to change them
-        self.max_concurrent_positions = MAX_CONCURRENT_POSITION
-        self.max_position_percent = MAX_POSITION_PERCENT
-        self.stop_loss_percent = STOP_LOSS_PERCENT
-        self.take_profit_percent = TAKE_PROFIT_PERCENT
-        self.momentum_factor = MOMENTUM_WINDOW_SIZE
         self.bid_history = []
         self.ask_history = []
         self.sliding_window_size = STAT_SLIDING_WINDOW_SIZE
@@ -101,24 +83,10 @@ class Trader:
                 if PRINT_BANANA_BID_STATS:
                     self.banana_bid_stats.add(order_depth.buy_orders)
 
-                # mean_ask_price = min(order_depth.sell_orders.keys())
-                # mean_bid_price = max(order_depth.buy_orders.keys())
-                mean_ask_price = self.banana_ask_stats.get_mean()
-                mean_bid_price = self.banana_bid_stats.get_mean()
-
-                should_buy = self.banana_ask_stats.should_act(mean_ask_price, buy=True)
-                should_sell = not self.banana_ask_stats.should_act(mean_bid_price, buy=False)
-
                 if len(order_depth.buy_orders) > 0:
                     # num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
                     num_long_positions = len(self.banana_long_positions)
                     num_short_positions = len(self.banana_short_positions)
-                    # can_short = False
-                    # if len(self.sliding_window_means) > 3:
-                    #     if (self.sliding_window_means[-3] >= self.sliding_window_means[-2] and
-                    #     self.sliding_window_means[-2] >= self.sliding_window_means[-1] and
-                    #     self.sliding_window_means[-3] > self.sliding_window_means[-1]):
-                    #         can_short = True
                     can_short = True
                     can_long = True
                     print("bot bid depths: " + str(order_depth.buy_orders))
@@ -148,7 +116,6 @@ class Trader:
                             self.banana_short_time += [0 for x in range(abs(bid_volume))]
 
                 if len(order_depth.sell_orders) > 0:
-                    # num_positions = 0 if 'BANANAS' not in state.position.keys() else state.position['BANANAS']
                     num_long_positions = len(self.banana_long_positions)
                     num_short_positions = len(self.banana_short_positions)
                     can_short = True
@@ -172,7 +139,6 @@ class Trader:
                     for ask_price in sorted(order_depth.sell_orders.keys()):
                         if ask_price <= self.banana_bid_stats.get_ninetith()  and len(
                                 self.banana_bid_stats.sliding_window) > 2 and can_long:
-                            can_short = False
                             ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_long_positions)))
                             print("BUY BANANAS LONG", str(-ask_volume) + "x", ask_price)
                             orders.append(Order(product, ask_price, -ask_volume))
