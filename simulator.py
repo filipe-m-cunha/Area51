@@ -13,17 +13,17 @@ from momentum_sldiing_window_2 import Trader
 # our trader
 trader = Trader()
 
-INPUT_FILE_PATH = 'data/island-data-bottle-round-1/island-data-bottle-round-1/prices_round_1_day_-1.csv'
+INPUT_FILE_PATH = 'data/prices_round_2_day_0.csv'
 #INPUT_FILE_PATH = 'data/tutorial_data.csv'
 #TRADES_OUTPUT_FILE_PATH = 'data/trades_round_1_day_0_simulator.csv'
-TRADES_OUTPUT_FILE_PATH = 'data/trades_round1_simulator.csv'
-PRICES_OUTPUT_FILE_PATH = 'data/prices_round1_simulator.csv'
+TRADES_OUTPUT_FILE_PATH = 'data/trades_round2_simulator.csv'
+PRICES_OUTPUT_FILE_PATH = 'data/prices_round2_simulator.csv'
 df = pd.read_csv(INPUT_FILE_PATH, delimiter=';')
 df.set_index('timestamp')
 
 # Initialize necessary variables for TradingState
 CURRENCY = 'SEASHELLS'
-commodities = ['PEARLS', 'BANANAS']
+commodities = ['PEARLS', 'BANANAS', 'COCONUTS', 'PINA_COLADAS']
 listings = { c:Listing(c, c, CURRENCY) for c in commodities } # not used for now
 own_trades = { c:[] for c in commodities } # using
 market_trades = { } # not used
@@ -31,7 +31,7 @@ observations = {} # not used
 position = { c:0 for c in commodities } # using
 
 # Variables for the simulator
-position_limits = {'PEARLS': 20, 'BANANAS': 20}
+position_limits = {'PEARLS': 20, 'BANANAS': 20, 'COCONUTS': 600, 'PINA_COLADAS': 300}
 own_trades_custom = [] # Saves whether the trade was buy or sell
 long_positions = { c:[] for c in commodities }
 short_positions = { c:[] for c in commodities}

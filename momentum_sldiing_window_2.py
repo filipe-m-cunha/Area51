@@ -3,9 +3,36 @@ import numpy as np
 from statistics import mean
 from datamodel import OrderDepth, TradingState, Order
 
+COMMODITIES = ["BANANAS", "COCONUTS", "PINA_COLADAS"]
+POSITION_LIMITS = {"PEARLS": 20, "BANANAS": 20, "COCONUTS":600, "PINA_COLADAS": 300}
 PRINT_PEARL = False
 PRINT_PRODUCTS = {"BANANAS": True, "COCONUTS": True, "PINA_COLADAS": True}
 STAT_SLIDING_WINDOW_SIZE = 7
+
+# [CLOSE LONG, OPEN SHORT, CLOSE SHORT, OPEN LONG]
+CAN_LONG = {"BANANAS": True, "COCONUTS": True, "PINA_COLADAS": False}
+CAN_SHORT = {"BANANAS": True, "COCONUTS": False, "PINA_COLADAS": True}
+INITIAL_CONDITIONS = [
+    lambda price, slw_bid, slw_ask, positions, volume, time: price > np.mean(np.array(positions[:volume]))\
+        or np.mean(np.array(time[:volume])) > 150,
+    lambda price, slw_bid, slw_ask, positions, volume, time: price > slw_ask.get_percentile(10)-2 \
+        and slw_ask.length() > 2,
+    lambda price, slw_bid, slw_ask, positions, volume, time: price < np.mean(np.array(positions[:volume]))\
+        or np.mean(np.array(time[:volume])) > 180,
+    lambda price, slw_bid, slw_ask, positions, volume, time: price <= slw_bid.get_percentile(90) \
+        and slw_bid.length() > 2]
+
+DECISION_CONDITIONS = {"BANANAS": INITIAL_CONDITIONS, "COCONUTS": INITIAL_CONDITIONS, "PINA_COLADAS": [
+    lambda price, slw_bid, slw_ask, positions, volume, time: price > np.mean(np.array(positions))\
+        or np.mean(np.array(time[:volume])) > 400,
+    lambda price, slw_bid, slw_ask, positions, volume, time: price > slw_ask.get_percentile(10)-5 \
+        and slw_ask.length() > 2,
+    lambda price, slw_bid, slw_ask, positions, volume, time: price < np.mean(np.array(positions[:volume]))\
+        or np.mean(np.array(time[:volume])) > 180,
+    lambda price, slw_bid, slw_ask, positions, volume, time: price <= slw_bid.get_percentile(90) \
+        and slw_bid.length() > 2
+]}
+
 
 class Trader:
 
@@ -14,7 +41,7 @@ class Trader:
         self.bid_history = []
         self.ask_history = []
         self.sliding_window_size = STAT_SLIDING_WINDOW_SIZE
-        self.sliding_windows = {}
+        self.product_stats = {}
         self.banana_long_positions = []
         self.banana_short_positions = []
         self.banana_short_time = []
@@ -69,20 +96,20 @@ class Trader:
                 result[product] = orders
 
             else:
-                if product not in self.sliding_windows.keys():
+                if product not in self.product_stats.keys():
                     sliding_window_ask = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_ASK")
                     sliding_window_bid = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_BID")
-                    self.sliding_windows[product] = [sliding_window_ask, sliding_window_bid, [], [], [], []]
+                    self.product_stats[product] = [sliding_window_ask, sliding_window_bid, [], [], [], []]
 
                 order_depth: OrderDepth = state.order_depths[product]
                 orders: list[Order] = []
 
-                sliding_window_ask = self.sliding_windows[product][0]
-                sliding_window_bid = self.sliding_windows[product][1]
-                long_positions = self.sliding_windows[product][2]
-                short_positions = self.sliding_windows[product][3]
-                long_time = self.sliding_windows[product][4]
-                short_time = self.sliding_windows[product][5]
+                sliding_window_ask = self.product_stats[product][0]
+                sliding_window_bid = self.product_stats[product][1]
+                long_positions = self.product_stats[product][2]
+                short_positions = self.product_stats[product][3]
+                long_time = self.product_stats[product][4]
+                short_time = self.product_stats[product][5]
 
                 if PRINT_PRODUCTS[product]:
                     sliding_window_ask.add(order_depth.sell_orders)
@@ -97,11 +124,12 @@ class Trader:
                     # CLOSE LONG
                     for bid_price in sorted(order_depth.buy_orders.keys(), reverse=True):
                         bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
-                        if bid_price > np.mean(np.array(long_positions[:bid_volume])) \
-                            or np.mean(np.array(long_time[:bid_volume])) > 150 and can_long:
+                        # if bid_price > np.mean(np.array(long_positions[:bid_volume])) \
+                        #     or np.mean(np.array(long_time[:bid_volume])) > 150 and can_long:
+                        if DECISION_CONDITIONS[product][0](bid_price, sliding_window_bid, sliding_window_ask,\
+                            long_positions, bid_volume, long_time) and CAN_LONG[product]:
                             #can_short = False
-                            # bid_volume = min(order_depth.buy_orders[bid_price], num_long_positions)
-                            print("SELL BANANAS LONG", str(bid_volume) + "x", bid_price)
+                            print(f"SELL {product} LONG", str(bid_volume) + "x", bid_price)
                             orders.append(Order(product, bid_price, -bid_volume))
                             num_long_positions -= bid_volume
                             long_positions = long_positions[bid_volume:]
@@ -109,10 +137,12 @@ class Trader:
 
                     # OPEN SHORT
                     for bid_price in sorted(order_depth.buy_orders.keys()):
-                        if bid_price > sliding_window_ask.get_tenth() - 2 and len(
-                                sliding_window_ask.sliding_window) > 2 and can_short:
-                            bid_volume = min(order_depth.buy_orders[bid_price], 20 - num_short_positions)
-                            print("SELL BANANAS SHORT", str(bid_volume) + "x", bid_price)
+                        bid_volume = min(order_depth.buy_orders[bid_price], POSITION_LIMITS[product] - num_short_positions)
+                        # if bid_price > sliding_window_ask.get_percentile(10) - 2 and len(
+                        #         sliding_window_ask.sliding_window) > 2 and can_short:
+                        if DECISION_CONDITIONS[product][1](bid_price, sliding_window_bid, sliding_window_ask,\
+                            short_time, bid_volume, short_time) and CAN_SHORT[product]:
+                            print(f"SELL {product} SHORT", str(bid_volume) + "x", bid_price)
                             orders.append(Order(product, bid_price, -bid_volume))
                             num_short_positions += abs(bid_volume)
                             short_positions += [bid_price for x in range(abs(bid_volume))]
@@ -128,10 +158,11 @@ class Trader:
                     for ask_price in sorted(order_depth.sell_orders.keys(), reverse=True):
                         ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
                         # bug: should do abs(ask_volume), but nothing has beaten this...
-                        if ask_price < np.mean(np.array(short_positions[:ask_volume])) - 2 \
-                            or np.mean(np.array(short_time[:ask_volume])) > 180 and can_short:
-                        # ask_volume = max(order_depth.sell_orders[ask_price], -(num_short_positions))
-                            print("BUY BANANAS SHORT", str(-ask_volume) + "x", ask_price)
+                        # if ask_price < np.mean(np.array(short_positions[:ask_volume])) - 2 \
+                        #     or np.mean(np.array(short_time[:ask_volume])) > 180 and can_short:
+                        if DECISION_CONDITIONS[product][2](ask_price, sliding_window_bid, sliding_window_ask,\
+                            short_positions, ask_volume, short_time) and CAN_SHORT[product]:
+                            print(f"BUY {product} SHORT", str(-ask_volume) + "x", ask_price)
                             orders.append(Order(product, ask_price, -ask_volume))
                             num_short_positions -= ask_volume
                             short_positions = short_positions[abs(ask_volume):]
@@ -140,21 +171,28 @@ class Trader:
                     # OPEN LONG
                     print("bot ask depths: " + str(order_depth.sell_orders))
                     for ask_price in sorted(order_depth.sell_orders.keys()):
-                        if ask_price <= sliding_window_bid.get_ninetith() and len(
-                            sliding_window_bid.sliding_window) > 2 and can_long:
-                            ask_volume = max(order_depth.sell_orders[ask_price], -(20 - (num_long_positions)))
-                            print("BUY BANANAS LONG", str(-ask_volume) + "x", ask_price)
+                        ask_volume = max(order_depth.sell_orders[ask_price], -(POSITION_LIMITS[product] - (num_long_positions)))
+                        # if ask_price <= sliding_window_bid.get_percentile(90) and len(
+                        #     sliding_window_bid.sliding_window) > 2 and can_long:
+                        if DECISION_CONDITIONS[product][3](ask_price, sliding_window_bid, sliding_window_ask,\
+                            long_positions, ask_volume, long_time) and CAN_LONG[product]:
+                            print(f"BUY {product} LONG", str(-ask_volume) + "x", ask_price)
                             orders.append(Order(product, ask_price, -ask_volume))
                             num_long_positions -= ask_volume
                             long_positions += [ask_price for x in range(abs(ask_volume))]
                             long_time += [0 for x in range(abs(ask_volume))]
 
-                self.sliding_windows[product][0] = sliding_window_ask
-                self.sliding_windows[product][1] = sliding_window_bid
-                self.sliding_windows[product][2] = long_positions
-                self.sliding_windows[product][3] = short_positions
-                self.sliding_windows[product][4] = long_time
-                self.sliding_windows[product][5] =  short_time
+                short_time = list(map(lambda n: n+1, short_time))
+                long_time = list(map(lambda n: n+1, long_time))
+
+                self.product_stats[product][0] = sliding_window_ask
+                self.product_stats[product][1] = sliding_window_bid
+                self.product_stats[product][2] = long_positions
+                self.product_stats[product][3] = short_positions
+                self.product_stats[product][4] = long_time
+                self.product_stats[product][5] =  short_time
+
+                
 
                 # Add all the above orders to the result dict
                 result[product] = orders
@@ -168,16 +206,16 @@ class Trader:
             if product != 'PEARLS':
 
                 if state.timestamp % (self.sliding_window_size * 2 * 100) == 0:
-                    self.sliding_window_means.append(self.sliding_windows[product][0].get_mean())
+                    self.sliding_window_means.append(self.product_stats[product][0].get_mean())
 
                 print(state.position)
-                print(self.sliding_windows[product][2])
-                print(self.sliding_windows[product][3])
+                print(self.product_stats[product][2])
+                print(self.product_stats[product][3])
 
                 # Print stats
                 if PRINT_PRODUCTS[product]:
-                    self.sliding_windows[product][0].print_stats()
-                    self.sliding_windows[product][1].print_stats()
+                    self.product_stats[product][0].print_stats()
+                    self.product_stats[product][1].print_stats()
 
 
         return result
@@ -221,7 +259,7 @@ class SlidingWindowStatistics:
 
     def update_stats(self):
         self.flat_list = self.flatten()
-        self.mean = int(sum(self.flat_list) / max(1, len(self.flat_list)))
+        self.mean = np.mean(np.array(self.flat_list))
 
     def get_mean(self):
         return self.mean
@@ -232,57 +270,34 @@ class SlidingWindowStatistics:
         else:
             return 0
 
-    def get_tenth(self):
-        if len(self.flat_list) > 0:
-            return self.flat_list[int(len(self.flat_list) / 10)]
-        else:
-            return 0
-
-    def get_twentith(self):
-        if len(self.flat_list) > 0:
-            return self.flat_list[int(len(self.flat_list) / 5)]
-        else:
-            return 0
-
-    def get_median(self):
-        if len(self.flat_list) > 0:
-            return self.flat_list[int(len(self.flat_list) / 2)]
-        else:
-            return 0
-
-    def get_eightith(self):
-        if len(self.flat_list) > 0:
-            return self.flat_list[max(0, len(self.flat_list) - 1 - int(len(self.flat_list) / 5))]
-        else:
-            return 0
-
-    def get_ninetith(self):
-        if len(self.flat_list) > 0:
-            return self.flat_list[max(0, len(self.flat_list) - 1 - int(len(self.flat_list) / 10))]
-        else:
-            return 0
-
     def get_max(self):
         if len(self.flat_list) > 0:
             return self.flat_list[-1:][0]
         else:
             return 0
 
+    def get_percentile(self, perc):
+        if len(self.flat_list) > 0:
+            return int(np.percentile(np.array(self.flat_list), perc))
+        else:
+            return 0
+
+    def length(self):
+        return len(self.sliding_window)
+
     def print_stats(self):
         self.update_stats()
-        flat_list = self.flat_list
-        # print(flat_list)
-        if len(flat_list) > 10:
+        if len(self.flat_list) > 10:
             output = "[" + str(self.statistics_type) + ","
             output += "mean:" + str(self.mean) + ","
-            output += "min:" + str(flat_list[0]) + ","
-            output += "10th:" + str(flat_list[int(len(flat_list) / 10)]) + ","
-            output += "25th:" + str(flat_list[int(len(flat_list) / 4)]) + ","
-            output += "50th:" + str(flat_list[int(len(flat_list) / 2)]) + ","
-            output += "75th:" + str(flat_list[max(0, len(flat_list) - 1 - int(len(flat_list) / 4))]) + ","
-            output += "90th:" + str(flat_list[max(0, len(flat_list) - 1 - int(len(flat_list) / 10))]) + ","
-            output += "max:" + str(flat_list[-1:]) + ","
-            output += "vol:" + str(len(flat_list))
+            output += "min:" + str(self.get_min()) + ","
+            output += "10th:" + str(self.get_percentile(10)) + ","
+            output += "25th:" + str(self.get_percentile(25)) + ","
+            output += "50th:" + str(self.get_percentile(50)) + ","
+            output += "75th:" + str(self.get_percentile(75)) + ","
+            output += "90th:" + str(self.get_percentile(90)) + ","
+            output += "max:" + str(self.get_max()) + ","
+            output += "vol:" + str(len(self.flat_list))
             output += "]"
         else:
             output = "[" + str(self.statistics_type) + ", more data needed]"
