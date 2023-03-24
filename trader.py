@@ -3,8 +3,8 @@ import numpy as np
 from statistics import mean
 from datamodel import OrderDepth, TradingState, Order
 
-COMMODITIES = ["BANANAS", "COCONUTS", "PINA_COLADAS"]
-POSITION_LIMITS = {"PEARLS": 20, "BANANAS": 20, "COCONUTS":600, "PINA_COLADAS": 300}
+COMMODITIES = ["BANANAS", "COCONUTS", "PINA_COLADAS", "DIVING_GEAR", "MAYBERRIES"]
+POSITION_LIMITS = {"PEARLS": 20, "BANANAS": 20, "COCONUTS":600, "PINA_COLADAS": 300, "DIVING_GEAR": 50, "MAYBERRIES": 250}
 PRINT_PEARL = False
 PRINT_PRODUCTS = {"BANANAS": True, "COCONUTS": True, "PINA_COLADAS": True}
 STAT_SLIDING_WINDOW_SIZE = 7
@@ -37,9 +37,6 @@ DECISION_CONDITIONS = {"BANANAS": INITIAL_CONDITIONS, "COCONUTS": INITIAL_CONDIT
 class Trader:
 
     def __init__(self):
-        # Keeping these varaibles hardcoded for now, we will probably need to change them
-        self.bid_history = []
-        self.ask_history = []
         self.sliding_window_size = STAT_SLIDING_WINDOW_SIZE
         self.product_stats = {}
         self.sliding_window_means = []
@@ -57,7 +54,6 @@ class Trader:
 
             # Check if the current product is the 'PEARLS' product, only then run the order logic
             if product == 'PEARLS':
-
                 # Retrieve the Order Depth containing all the market BUY and SELL orders for PEARLS
                 order_depth: OrderDepth = state.order_depths[product]
 
@@ -81,8 +77,13 @@ class Trader:
                         print("SELL PEARLS", str(ask_volume) + "x", ask_price)
                         orders.append(Order(product, ask_price, -ask_volume))
                 result[product] = orders
-
-            else:
+            elif product == 'PINA_COLADAS' or product == 'COCONUTS':
+                # TODO: pair trading
+                pass
+            elif product == 'DIVING_GEAR' or product == 'DOLPHIN_SIGHTINGS':
+                # TODO: use dolphin knowledge, DOLPHIN_SIGHTINGS is not a tradable good!
+                pass
+            else: #! this is now for BANANAS and MAYBERRIES rn
                 if product not in self.product_stats.keys():
                     sliding_window_ask = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_ASK")
                     sliding_window_bid = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_BID")
