@@ -152,12 +152,15 @@ for i in tqdm(range(0, MAX_TIME, TIME_STEP)):
 
 
 # Save trade information in a custom format csv, that includes BUY/SELL information
+print("Creating DS...")
 trades_df = pd.DataFrame(columns=['timestamp', 'buyer', 'seller', 'symbol', 'currency', 'price', 'quantity', 'operation', 'position', 'profit', 'long_positions', 'short_positions'])
 for t in own_trades_custom:
     trades_df.loc[len(trades_df)] = [t[0].timestamp, t[0].buyer, t[0].seller, t[0].symbol, CURRENCY, t[0].price, t[0].quantity, t[1], t[2], t[3], t[4], t[5]]
 
+print("Doing Dataset..")
 trades_df.to_csv(TRADES_OUTPUT_FILE_PATH)
 print(trades_df)
 
+print("Building output..")
 df.to_csv(PRICES_OUTPUT_FILE_PATH, sep=';')
 print(df)
