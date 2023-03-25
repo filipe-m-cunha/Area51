@@ -19,13 +19,13 @@ class CocoPinaCls:
         orders_coco = order_depths['COCONUTS']
         coco_buys = orders_coco.buy_orders
         buys = []
-        for buy_price, volume in coco_buys:
-            buys += [buy_price] * volume
+        for buy_price in coco_buys.keys():
+            buys += [buy_price] * coco_buys[buy_price]
         median_price_buys = median(buys)
         coco_sells = orders_coco.sell_orders
         sells = []
-        for sell_price, volume in coco_sells:
-            sells += [sell_price] * (-volume)
+        for sell_price in coco_sells.keys():
+            sells += [sell_price] * (-coco_sells[sell_price])
         median_price_sells = median(sells)
         coco = mean([median_price_buys, median_price_sells])
         
@@ -33,13 +33,13 @@ class CocoPinaCls:
         orders_pina = order_depths['PINA_COLADAS']
         pina_buys = orders_pina.buy_orders
         buys = []
-        for buy_price, volume in pina_buys:
-            buys += [buy_price] * volume
+        for buy_price in pina_buys.keys():
+            buys += [buy_price] * pina_buys[buy_price]
         median_price_buys = median(buys)
         pina_sells = orders_pina.sell_orders
         sells = []
-        for sell_price, volume in pina_sells:
-            sells += [sell_price] * (-volume)
+        for sell_price in pina_sells.keys():
+            sells += [sell_price] * (-pina_sells[sell_price])
         median_price_sells = median(sells)
         pina = mean([median_price_buys, median_price_sells])
         
