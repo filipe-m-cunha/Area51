@@ -95,7 +95,7 @@ class Trader:
             elif product == 'DIVING_GEAR' or product == 'DOLPHIN_SIGHTINGS':
                 # TODO: use dolphin knowledge, DOLPHIN_SIGHTINGS is not a tradable good!
                 pass
-            else: #! this is now for BANANAS and MAYBERRIES rn
+            else: #! this is now for BANANAS and BERRIES rn
                 if product not in self.product_stats.keys():
                     sliding_window_ask = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_ASK")
                     sliding_window_bid = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_BID")
@@ -156,7 +156,7 @@ class Trader:
                 # Add all the above orders to the result dict
                 result[product] = orders
 
-        for product in state.order_depths.keys():
+        for product in self.product_stats.keys():
 
             if product not in ['PEARLS', 'DIVING_GEAR', 'DOLPHIN_SIGHTINGS']:
 
