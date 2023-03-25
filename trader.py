@@ -127,7 +127,7 @@ class Trader:
                     bid_price = list(sorted(order_depth.buy_orders.keys(), reverse=True))[0]
                     best_prices['bid_price'].append(bid_price)
                     if len(best_prices['bid_price']) > STAT_SLIDING_WINDOW_SIZE:
-                        best_prices['buy_price'] = best_prices['buy_price'][1:]
+                        best_prices['bid_price'] = best_prices['bid_price'][1:]
 
                 curr_value = 0.5* sum([sum(best_prices[val]) / len(best_prices[val]) for val in ['ask_price', 'bid_price']])
 
