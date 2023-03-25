@@ -4,18 +4,31 @@ import numpy as np
 from statistics import mean
 from datamodel import OrderDepth, TradingState, Order
 
-CLASSIFIER = lambda states: {k: len(states) for k in states[-1].order_depths.keys()}
+from bananas import Trader as BananasTrader
+
+b = BananasTrader()
+
+def helper(states):
+    return {c: sum([t.quantity for t in trades]) for c, trades in b.run(states[-1]).items()}
+
+
+CLASSIFIER = helper
 
 class Trader:
 
 
-    def __init__(self, cls : Callable = CLASSIFIER, verbose = True):
+    def __init__(self, cls : Callable = CLASSIFIER, verbose = False):
         self.time : int = 0
         self.states : List[Dict] = []
         self.cls = cls
         self.limits = {
             "PEARLS": 20,
-            "BANANAS": 20
+            "BANANAS": 20,
+            "COCONUTS": 600,
+            "PINA_COLADAS": 300,
+            "DIVING_GEAR": 50,
+            "BERRIES": 250,
+            "DOLPHIN_SIGHTINGS": 0
         }
         self.hard_limit = False
         self.verbose = verbose
@@ -41,6 +54,9 @@ class Trader:
         # Iterate over all the keys (the available products) contained in the order depths
         result = {}
         for product in state.order_depths.keys():
+
+            if not product in diffs:
+                continue
             
             diff = diffs[product]
             
