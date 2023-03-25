@@ -12,26 +12,9 @@ STAT_SLIDING_WINDOW_SIZE = 7
 # [CLOSE LONG, OPEN SHORT, CLOSE SHORT, OPEN LONG]
 CAN_LONG = {"BANANAS": True, "COCONUTS": True, "PINA_COLADAS": False, "BERRIES": True, "DIVING_GEAR": True}
 CAN_SHORT = {"BANANAS": True, "COCONUTS": False, "PINA_COLADAS": True, "BERRIES": True, "DIVING_GEAR": True}
-INITIAL_CONDITIONS = [
-    lambda price, slw_bid, slw_ask, positions, volume, time: price > np.mean(np.array(positions[:volume]))\
-        or np.mean(np.array(time[:volume])) > 150,
-    lambda price, slw_bid, slw_ask, positions, volume, time: price > slw_ask.get_percentile(10)-2 \
-        and slw_ask.length() > 2,
-    lambda price, slw_bid, slw_ask, positions, volume, time: price < np.mean(np.array(positions[:volume]))\
-        or np.mean(np.array(time[:volume])) > 180,
-    lambda price, slw_bid, slw_ask, positions, volume, time: price <= slw_bid.get_percentile(90) \
-        and slw_bid.length() > 2]
 
-DECISION_CONDITIONS = {"BANANAS": INITIAL_CONDITIONS, "COCONUTS": INITIAL_CONDITIONS, "PINA_COLADAS": [
-    lambda price, slw_bid, slw_ask, positions, volume, time: price > np.mean(np.array(positions))\
-        or np.mean(np.array(time[:volume])) > 400,
-    lambda price, slw_bid, slw_ask, positions, volume, time: price > slw_ask.get_percentile(10)-5 \
-        and slw_ask.length() > 2,
-    lambda price, slw_bid, slw_ask, positions, volume, time: price < np.mean(np.array(positions[:volume]))\
-        or np.mean(np.array(time[:volume])) > 180,
-    lambda price, slw_bid, slw_ask, positions, volume, time: price <= slw_bid.get_percentile(90) \
-        and slw_bid.length() > 2
-], "BERRIES": INITIAL_CONDITIONS, "DIVING_GEAR": INITIAL_CONDITIONS}
+BUY_MARGIN = {"BANANAS": 1, "BERRIES": 1}
+SELL_MARGIN = {"BANANAS": 1, "BERRIES": 1}
 
 
 class Trader:
@@ -95,7 +78,7 @@ class Trader:
             elif product == 'DIVING_GEAR' or product == 'DOLPHIN_SIGHTINGS':
                 # TODO: use dolphin knowledge, DOLPHIN_SIGHTINGS is not a tradable good!
                 pass
-            else: #! this is now for BANANAS and MAYBERRIES rn
+            else: #! this is now for BANANAS and BERRIES rn
                 if product not in self.product_stats.keys():
                     sliding_window_ask = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_ASK")
                     sliding_window_bid = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_BID")
@@ -104,7 +87,7 @@ class Trader:
                         'ask_hist': [],
                         'ask_price': [],
                         'bid_price': []
-                    }]
+                    }, [], [], [], []]
 
                 order_depth: OrderDepth = state.order_depths[product]
                 orders: list[Order] = []
@@ -112,6 +95,10 @@ class Trader:
                 sliding_window_ask = self.product_stats[product][0]
                 sliding_window_bid = self.product_stats[product][1]
                 best_prices = self.product_stats[product][2]
+                long_positions = self.product_stats[product][3]
+                short_positions = self.product_stats[product][4]
+                long_time = self.product_stats[product][5]
+                short_time = self.product_stats[product][6]
 
                 if PRINT_PRODUCTS[product]:
                     sliding_window_ask.add(order_depth.sell_orders)
@@ -135,28 +122,42 @@ class Trader:
                     if ask_price < curr_value:
                         ask_volume = order_depth.sell_orders[ask_price]
                         orders.append(Order(product, ask_price, -ask_volume))
-                    if ask_price - 1 > curr_value:
-                        orders.append(Order(product, ask_price - 1, -POSITION_LIMITS[product]//4))
+                        short_positions += [ask_price for i in range(abs(ask_volume))]
+                    if ask_price - curr_value/5000 > curr_value:
+                        orders.append(Order(product, ask_price - (int(curr_value/5000)+1), -POSITION_LIMITS[product]//4))
+                        short_positions += [ask_price for i in range(abs(POSITION_LIMITS[product]//4))]
                     if ask_price > curr_value:
                         orders.append(Order(product, ask_price, -POSITION_LIMITS[product]//4))
+                        short_positions += [ask_price for i in range(abs(POSITION_LIMITS[product]//4))]
 
                 if bid_price:
                     if bid_price > curr_value:
                         bid_volume = order_depth.buy_orders[bid_price]
                         orders.append(Order(product, bid_price, -bid_volume))
-                    if bid_price + 1 < curr_value:
-                        orders.append(Order(product, bid_price + 1, POSITION_LIMITS[product] // 4))
+                        long_positions += [ask_price for i in range(abs(bid_volume))]
+
+                    if bid_price + curr_value/5000 < curr_value:
+                        orders.append(Order(product, bid_price + (int(curr_value/5000)+1), POSITION_LIMITS[product] // 4))
+                        long_positions += [ask_price for i in range(abs(POSITION_LIMITS[product] // 4))]
                     if bid_price < curr_value:
                         orders.append(Order(product, bid_price, POSITION_LIMITS[product] // 4))
+                        long_positions += [ask_price for i in range(abs(POSITION_LIMITS[product] // 4))]
+
+                short_time = list(map(lambda n: n+1, short_time))
+                long_time = list(map(lambda n: n+1, long_time))
 
                 self.product_stats[product][0] = sliding_window_ask
                 self.product_stats[product][1] = sliding_window_bid
                 self.product_stats[product][2] = best_prices
+                self.product_stats[product][3] = long_positions
+                self.product_stats[product][4] = short_positions
+                self.product_stats[product][5] = long_time
+                self.product_stats[product][6] = short_time
 
                 # Add all the above orders to the result dict
                 result[product] = orders
 
-        for product in state.order_depths.keys():
+        for product in self.product_stats.keys():
 
             if product not in ['PEARLS', 'DIVING_GEAR', 'DOLPHIN_SIGHTINGS']:
 
