@@ -8,7 +8,7 @@ from typing import Dict, List
 from tqdm.auto import tqdm
 
 #! change this import to get the newest Trader
-from general import Trader
+from trader import Trader
 
 # def line_to_state()
 
