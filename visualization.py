@@ -49,10 +49,16 @@ for product in products:
     bids_asks = product_data.iloc[:, 3:-2:2]
     avg_bids = bids_asks.iloc[:, :len(bids_asks.columns) // 2].mean(axis=1)
     avg_asks = bids_asks.iloc[:, len(bids_asks.columns) // 2:].mean(axis=1)
-    ax[2, i].plot(time, avg_bids, label='Average bids', lw=0.3)
-    ax[2, i].plot(time, avg_asks, label='Average asks', lw=0.3)
+    highest_bids = product_data.iloc[:, 4]
+    lowest_asks = product_data.iloc[:, 10]
+    diff_bid_ask = lowest_asks - highest_bids
+    #ax[2, i].plot(time, avg_bids, label='Average bids', lw=0.3)
+    #ax[2, i].plot(time, avg_asks, label='Average asks', lw=0.3)
+    #ax[2, i].plot(time, highest_bids, label='highest bid', lw=0.3)
+    #ax[2, i].plot(time, lowest_asks, label='lowest ask', lw=0.3)
+    ax[2, i].plot(time, diff_bid_ask, label='bid ask', lw=0.3)
     ax[2, i].legend()
-    ax[2, i].set_title('Bids/Asks')
+    ax[2, i].set_title('Bid Ask')
     
     # volume
     volumes = product_data.iloc[:, 4:-2:2]

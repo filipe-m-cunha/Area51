@@ -78,7 +78,7 @@ class Trader:
             elif product == 'DIVING_GEAR' or product == 'DOLPHIN_SIGHTINGS':
                 # TODO: use dolphin knowledge, DOLPHIN_SIGHTINGS is not a tradable good!
                 pass
-            else: #! this is now for BANANAS and MAYBERRIES rn
+            else: #! this is now for BANANAS and BERRIES rn
                 if product not in self.product_stats.keys():
                     sliding_window_ask = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_ASK")
                     sliding_window_bid = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_BID")
@@ -123,8 +123,8 @@ class Trader:
                         ask_volume = order_depth.sell_orders[ask_price]
                         orders.append(Order(product, ask_price, -ask_volume))
                         short_positions += [ask_price for i in range(abs(ask_volume))]
-                    if ask_price - 1 > curr_value:
-                        orders.append(Order(product, ask_price - 1, -POSITION_LIMITS[product]//4))
+                    if ask_price - curr_value/5000 > curr_value:
+                        orders.append(Order(product, ask_price - (int(curr_value/5000)+1), -POSITION_LIMITS[product]//4))
                         short_positions += [ask_price for i in range(abs(POSITION_LIMITS[product]//4))]
                     if ask_price > curr_value:
                         orders.append(Order(product, ask_price, -POSITION_LIMITS[product]//4))
@@ -135,8 +135,9 @@ class Trader:
                         bid_volume = order_depth.buy_orders[bid_price]
                         orders.append(Order(product, bid_price, -bid_volume))
                         long_positions += [ask_price for i in range(abs(bid_volume))]
-                    if bid_price + 1 < curr_value:
-                        orders.append(Order(product, bid_price + 1, POSITION_LIMITS[product] // 4))
+
+                    if bid_price + curr_value/5000 < curr_value:
+                        orders.append(Order(product, bid_price + (int(curr_value/5000)+1), POSITION_LIMITS[product] // 4))
                         long_positions += [ask_price for i in range(abs(POSITION_LIMITS[product] // 4))]
                     if bid_price < curr_value:
                         orders.append(Order(product, bid_price, POSITION_LIMITS[product] // 4))
@@ -156,7 +157,7 @@ class Trader:
                 # Add all the above orders to the result dict
                 result[product] = orders
 
-        for product in state.order_depths.keys():
+        for product in self.product_stats.keys():
 
             if product not in ['PEARLS', 'DIVING_GEAR', 'DOLPHIN_SIGHTINGS']:
 
