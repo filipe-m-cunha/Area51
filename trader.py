@@ -121,13 +121,13 @@ class Trader:
                     ask_price = list(sorted(order_depth.sell_orders.keys()))[0]
                     best_prices['ask_price'].append(ask_price)
                     if len(best_prices['ask_price']) > STAT_SLIDING_WINDOW_SIZE:
-                        best_prices['ask_price'] = best_prices['ask_price'][1:]
+                        best_prices['ask_price'].pop(0)
 
                 if len(order_depth.buy_orders) > 0:
                     bid_price = list(sorted(order_depth.buy_orders.keys(), reverse=True))[0]
                     best_prices['bid_price'].append(bid_price)
                     if len(best_prices['bid_price']) > STAT_SLIDING_WINDOW_SIZE:
-                        best_prices['bid_price'] = best_prices['bid_price'][1:]
+                        best_prices['bid_price'].pop(0)
 
                 curr_value = 0.5* sum([sum(best_prices[val]) / len(best_prices[val]) for val in ['ask_price', 'bid_price']])
 
@@ -135,8 +135,8 @@ class Trader:
                     if ask_price < curr_value:
                         ask_volume = order_depth.sell_orders[ask_price]
                         orders.append(Order(product, ask_price, -ask_volume))
-                    if ask_price - 2 > curr_value:
-                        orders.append(Order(product, ask_price - 2, -POSITION_LIMITS[product]//4))
+                    if ask_price - 1 > curr_value:
+                        orders.append(Order(product, ask_price - 1, -POSITION_LIMITS[product]//4))
                     if ask_price > curr_value:
                         orders.append(Order(product, ask_price, -POSITION_LIMITS[product]//4))
 
@@ -144,8 +144,8 @@ class Trader:
                     if bid_price > curr_value:
                         bid_volume = order_depth.buy_orders[bid_price]
                         orders.append(Order(product, bid_price, -bid_volume))
-                    if bid_price + 2 < curr_value:
-                        orders.append(Order(product, bid_price + 2, POSITION_LIMITS[product] // 4))
+                    if bid_price + 1 < curr_value:
+                        orders.append(Order(product, bid_price + 1, POSITION_LIMITS[product] // 4))
                     if bid_price < curr_value:
                         orders.append(Order(product, bid_price, POSITION_LIMITS[product] // 4))
 
