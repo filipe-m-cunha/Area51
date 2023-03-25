@@ -135,8 +135,8 @@ class Trader:
                     if ask_price < curr_value:
                         ask_volume = order_depth.sell_orders[ask_price]
                         orders.append(Order(product, ask_price, -ask_volume))
-                    if ask_price - 1 > curr_value:
-                        orders.append(Order(product, ask_price - 1, -POSITION_LIMITS[product]//4))
+                    if ask_price - curr_value/5000 > curr_value:
+                        orders.append(Order(product, ask_price - (int(curr_value/5000)+1), -POSITION_LIMITS[product]//4))
                     if ask_price > curr_value:
                         orders.append(Order(product, ask_price, -POSITION_LIMITS[product]//4))
 
@@ -144,8 +144,8 @@ class Trader:
                     if bid_price > curr_value:
                         bid_volume = order_depth.buy_orders[bid_price]
                         orders.append(Order(product, bid_price, -bid_volume))
-                    if bid_price + 1 < curr_value:
-                        orders.append(Order(product, bid_price + 1, POSITION_LIMITS[product] // 4))
+                    if bid_price + curr_value/5000 < curr_value:
+                        orders.append(Order(product, bid_price + (int(curr_value/5000)+1), POSITION_LIMITS[product] // 4))
                     if bid_price < curr_value:
                         orders.append(Order(product, bid_price, POSITION_LIMITS[product] // 4))
 

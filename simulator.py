@@ -24,7 +24,7 @@ position_limits = {
 }
 commodities = list(position_limits.keys())
 
-INPUT_FILE_PATH = 'data/prices_round_3_day_0.csv'
+INPUT_FILE_PATH = 'data/prices_round_3_day_2.csv'
 #INPUT_FILE_PATH = 'data/tutorial_data.csv'
 #TRADES_OUTPUT_FILE_PATH = 'data/trades_round_1_day_0_simulator.csv'
 TRADES_OUTPUT_FILE_PATH = 'data/trades_round3_simulator.csv'
@@ -113,7 +113,7 @@ for i in tqdm(range(0, MAX_TIME, TIME_STEP)):
                             remaining_buy_quantity = 0
                             assert(len(long_positions[c]) == position[c])
 
-                        own_trades_custom.append([buy_trade, 'BUY', position[c], cumulative_profit[c], long_positions[c], short_positions[c]])
+                        own_trades_custom.append([buy_trade, 'BUY', position[c], cumulative_profit[c]])
                         #position[c] += fulfilled_volume
                         assert(abs(position[c]) <= position_limits[c])
 
@@ -145,21 +145,21 @@ for i in tqdm(range(0, MAX_TIME, TIME_STEP)):
                             remaining_sell_quantity = 0
                             assert(len(short_positions[c]) == abs(position[c]))
 
-                        own_trades_custom.append([sell_trade, 'SELL', position[c], cumulative_profit[c], long_positions[c], short_positions[c]])
+                        own_trades_custom.append([sell_trade, 'SELL', position[c], cumulative_profit[c]])
                         assert(abs(position[c]) <= position_limits[c])
 
         df.loc[(df['timestamp'] == i) & (df['product'] == c), 'profit_and_loss'] = cumulative_profit[c]
 
 
 # Save trade information in a custom format csv, that includes BUY/SELL information
-print("Creating DS...")
-trades_df = pd.DataFrame(columns=['timestamp', 'buyer', 'seller', 'symbol', 'currency', 'price', 'quantity', 'operation', 'position', 'profit', 'long_positions', 'short_positions'])
-for t in own_trades_custom:
-    trades_df.loc[len(trades_df)] = [t[0].timestamp, t[0].buyer, t[0].seller, t[0].symbol, CURRENCY, t[0].price, t[0].quantity, t[1], t[2], t[3], t[4], t[5]]
+# print("Creating DS...")
+# trades_df = pd.DataFrame(columns=['timestamp', 'buyer', 'seller', 'symbol', 'currency', 'price', 'quantity', 'operation', 'position', 'profit'])
+# for t in own_trades_custom:
+#     trades_df.loc[len(trades_df)] = [t[0].timestamp, t[0].buyer, t[0].seller, t[0].symbol, CURRENCY, t[0].price, t[0].quantity, t[1], t[2], t[3]]
 
-print("Doing Dataset..")
-trades_df.to_csv(TRADES_OUTPUT_FILE_PATH)
-print(trades_df)
+# print("Doing Dataset..")
+# trades_df.to_csv(TRADES_OUTPUT_FILE_PATH)
+# print(trades_df)
 
 print("Building output..")
 df.to_csv(PRICES_OUTPUT_FILE_PATH, sep=';')
