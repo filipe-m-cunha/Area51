@@ -66,7 +66,7 @@ class Trader:
 
                 if len(order_depth.sell_orders) > 0:
                     # Sort and check whether any orders
-                    for ask_price in sorted(order_depth.sell_orders.keys()):
+                    for ask_price in [sorted(order_depth.sell_orders.keys())[0]]:
                         if ask_price >= acceptable_price + 1:
                             break
                         if ask_price < acceptable_price:
@@ -77,7 +77,7 @@ class Trader:
                             ask_volume = POSITION_LIMITS[product] // 4
                             orders.append(Order(product, ask_price, -ask_volume))
                 if len(order_depth.buy_orders) != 0:
-                    for ask_price in sorted(order_depth.buy_orders.keys(), reverse=True):
+                    for ask_price in [sorted(order_depth.buy_orders.keys(), reverse=True)[0]]:
                         if ask_price <= acceptable_price - 1:
                             break
                         if ask_price <= acceptable_price:
