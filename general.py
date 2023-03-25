@@ -44,10 +44,8 @@ class Trader:
         result = {}
         for product in state.order_depths.keys():
             
-            if product == 'COCONUTS':
+            if product == 'COCONUTS' or product == 'PINA_COLADAS':
                 diffs = coco_pina_cls(self.states)
-            elif product == 'PINA_COLADAS':
-                diffs = None
             else:
                 diffs = None
 
