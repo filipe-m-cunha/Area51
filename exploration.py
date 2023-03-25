@@ -114,4 +114,6 @@ p, q, P, Q = result_table.parameters[0]
 best_model = sm.tsa.statespace.SARIMAX(train, order=(p, d, q),
                                        seasonal_order=(P, D, Q, s)).fit(disp=-1)
 
+print(p, q, P, Q)
+
 print(best_model.summary())
