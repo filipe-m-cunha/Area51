@@ -4,23 +4,13 @@ import numpy as np
 from statistics import mean
 from datamodel import OrderDepth, TradingState, Order
 
-from bananas import Trader as BananasTrader
-
-b = BananasTrader()
-
-def helper(states):
-    return {c: sum([t.quantity for t in trades]) for c, trades in b.run(states[-1]).items()}
-
-
-CLASSIFIER = helper
+from coco_pina_classifier import CocoPinaCls
 
 class Trader:
 
-
-    def __init__(self, cls : Callable = CLASSIFIER, verbose = False):
+    def __init__(self, verbose = False):
         self.time : int = 0
         self.states : List[Dict] = []
-        self.cls = cls
         self.limits = {
             "PEARLS": 20,
             "BANANAS": 20,
@@ -35,8 +25,6 @@ class Trader:
 
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-
-
         """
         Only method required. It takes all buy and sell orders for all symbols as an input,
         and outputs a list of orders to be sent
@@ -49,13 +37,21 @@ class Trader:
                 position[product] = 0
 
         self.add_state(state)
-        diffs = self.cls(self.states)
+        
+        coco_pina_cls = CocoPinaCls()
 
         # Iterate over all the keys (the available products) contained in the order depths
         result = {}
         for product in state.order_depths.keys():
+            
+            if product == 'COCONUTS':
+                diffs = coco_pina_cls(self.states)
+            elif product == 'PINA_COLADAS':
+                diffs = None
+            else:
+                diffs = None
 
-            if not product in diffs:
+            if diffs is None or not product in diffs:
                 continue
             
             diff = diffs[product]
