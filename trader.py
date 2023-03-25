@@ -3,8 +3,8 @@ import numpy as np
 from statistics import mean
 from datamodel import OrderDepth, TradingState, Order
 
-COMMODITIES = ["BANANAS", "COCONUTS", "PINA_COLADAS"]
-POSITION_LIMITS = {"PEARLS": 20, "BANANAS": 20, "COCONUTS":600, "PINA_COLADAS": 300}
+COMMODITIES = ["BANANAS", "COCONUTS", "PINA_COLADAS", "DIVING_GEAR", "MAYBERRIES"]
+POSITION_LIMITS = {"PEARLS": 20, "BANANAS": 20, "COCONUTS":600, "PINA_COLADAS": 300, "DIVING_GEAR": 50, "MAYBERRIES": 250}
 PRINT_PEARL = False
 PRINT_PRODUCTS = {"BANANAS": True, "COCONUTS": True, "PINA_COLADAS": True}
 STAT_SLIDING_WINDOW_SIZE = 7
@@ -37,15 +37,8 @@ DECISION_CONDITIONS = {"BANANAS": INITIAL_CONDITIONS, "COCONUTS": INITIAL_CONDIT
 class Trader:
 
     def __init__(self):
-        # Keeping these varaibles hardcoded for now, we will probably need to change them
-        self.bid_history = []
-        self.ask_history = []
         self.sliding_window_size = STAT_SLIDING_WINDOW_SIZE
         self.product_stats = {}
-        self.banana_long_positions = []
-        self.banana_short_positions = []
-        self.banana_short_time = []
-        self.banana_long_time = []
         self.sliding_window_means = []
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
@@ -56,27 +49,17 @@ class Trader:
         # Initialize the method output dict as an empty dict
         result = {}
 
-        self.banana_short_time = list(map(lambda n: n+1, self.banana_short_time))
-        self.banana_long_time = list(map(lambda n: n+1, self.banana_long_time))
-
         # Iterate over all the keys (the available products) contained in the order depths
         for product in state.order_depths.keys():
 
             # Check if the current product is the 'PEARLS' product, only then run the order logic
             if product == 'PEARLS':
-
                 # Retrieve the Order Depth containing all the market BUY and SELL orders for PEARLS
                 order_depth: OrderDepth = state.order_depths[product]
 
                 # Initialize the list of Orders to be sent as an empty list
                 orders: list[Order] = []
                 acceptable_price = 10000
-
-                # For stats calculation
-                #if PRINT_PEARL_ASK_STATS:
-                #    self.pearl_ask_stats.add(order_depth.sell_orders)
-                #if PRINT_PEARL_BID_STATS:
-                #    self.pearl_bid_stats.add(order_depth.buy_orders)
 
                 if len(order_depth.sell_orders) > 0:
                     # Sort and check whether any orders
@@ -94,8 +77,13 @@ class Trader:
                         print("SELL PEARLS", str(ask_volume) + "x", ask_price)
                         orders.append(Order(product, ask_price, -ask_volume))
                 result[product] = orders
-
-            else:
+            elif product == 'PINA_COLADAS' or product == 'COCONUTS':
+                # TODO: pair trading
+                pass
+            elif product == 'DIVING_GEAR' or product == 'DOLPHIN_SIGHTINGS':
+                # TODO: use dolphin knowledge, DOLPHIN_SIGHTINGS is not a tradable good!
+                pass
+            else: #! this is now for BANANAS and MAYBERRIES rn
                 if product not in self.product_stats.keys():
                     sliding_window_ask = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_ASK")
                     sliding_window_bid = SlidingWindowStatistics(STAT_SLIDING_WINDOW_SIZE, str(product) + "_BID")
@@ -118,7 +106,6 @@ class Trader:
                 if len(order_depth.buy_orders) > 0:
                     num_long_positions = len(long_positions)
                     num_short_positions = len(short_positions)
-                    can_short = True
                     print("bot bid depths: ", str(order_depth.buy_orders))
 
                     # CLOSE LONG
@@ -151,8 +138,6 @@ class Trader:
                 if len(order_depth.sell_orders) > 0:
                     num_long_positions = len(long_positions)
                     num_short_positions = len(short_positions)
-                    can_short = True
-                    can_long = True
 
                     # CLOSE SHORT
                     for ask_price in sorted(order_depth.sell_orders.keys(), reverse=True):
@@ -192,14 +177,8 @@ class Trader:
                 self.product_stats[product][4] = long_time
                 self.product_stats[product][5] =  short_time
 
-                
-
                 # Add all the above orders to the result dict
                 result[product] = orders
-
-                # Return the dict of orders
-                # These possibly contain buy or sell orders for PEARLS
-                # Depending on the logic above
 
         for product in state.order_depths.keys():
 
@@ -216,7 +195,6 @@ class Trader:
                 if PRINT_PRODUCTS[product]:
                     self.product_stats[product][0].print_stats()
                     self.product_stats[product][1].print_stats()
-
 
         return result
 
