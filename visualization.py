@@ -39,7 +39,7 @@ for product in products:
     
     # mid price
     ax[0, i].plot(time, product_data['mid_price'], lw=0.3)
-    ax[0, i].set_title('Mid price')
+    ax[0, i].set_title(product)
     
     # profits
     ax[1, i].plot(time, product_data['profit_and_loss'], lw=0.3)
@@ -72,6 +72,7 @@ for product in products:
     ax[3, i].plot(ask_volume, label='Asks', lw=0.3)
     ax[3, i].legend()
     ax[3, i].set_title('Volume')
+
     
     i += 1
     
