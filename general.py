@@ -10,7 +10,7 @@ class CocoPinaCls:
           "COCONUTS": 600,
           "PINA_COLADAS": 300
         }
-        self.beta = 0.5332246610399421
+        self.beta = 0.5331881677582299
         
         self.lag = 5
         self.slope_lag = 5

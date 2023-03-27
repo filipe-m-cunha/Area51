@@ -10,7 +10,7 @@ class CocoPinaCls:
           "COCONUTS": 600,
           "PINA_COLADAS": 300
         }
-        self.beta = 0.5332246610399421
+        self.beta = 0.5331881677582299
         
         self.lag = 5
         self.slope_lag = 5
@@ -84,8 +84,9 @@ if __name__ == "__main__":
     data_0 = pd.read_csv('data/prices_round_3_day_0.csv', sep=';')
     data_1 = pd.read_csv('data/prices_round_3_day_1.csv', sep=';')
     data_2 = pd.read_csv('data/prices_round_3_day_2.csv', sep=';')
+    data_3 = pd.read_csv('data/prices_round_4_day_3.csv', sep=';')
     
-    data = pd.concat([data_neg1, data_0, data_1, data_2])
+    data = pd.concat([data_neg1, data_0, data_1, data_2, data_3])
     data_coco = data[data['product'] == 'COCONUTS']['mid_price'].to_numpy()
     data_pina = data[data['product'] == 'PINA_COLADAS']['mid_price'].to_numpy()
     
